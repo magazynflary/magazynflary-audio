@@ -1,5 +1,5 @@
-import lib
+import magazynflary_audio
 
 
 def test_import() -> None:
-    assert lib is not None
+    assert magazynflary_audio is not None
