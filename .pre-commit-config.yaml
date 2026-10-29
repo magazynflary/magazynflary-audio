@@ -1,16 +1,25 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.3
-    hooks:
-      - id: ruff-check
-        args: [--fix]
-      - id: ruff-format
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.4.0
-    hooks:
-      - id: mypy
-  - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.13.6
+  - repo: local
     hooks:
       - id: uv-lock
-        args: [--check]
+        name: uv lock --check
+        entry: .hooks/uv-lock.sh
+        language: unsupported_script
+        files: ^(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
+      - id: ruff-check
+        name: ruff check
+        entry: .hooks/ruff-check.sh
+        language: unsupported_script
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff format
+        entry: .hooks/ruff-format.sh
+        language: unsupported_script
+        types_or: [python, pyi]
+      - id: mypy
+        name: mypy
+        entry: .hooks/mypy.sh
+        language: unsupported_script
+        types_or: [python, pyi]
+        pass_filenames: false
