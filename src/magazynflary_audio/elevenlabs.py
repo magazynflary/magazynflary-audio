@@ -16,7 +16,7 @@ from magazynflary_audio.types import Audio, ChunkTooLongError, Language, TextToS
 class ElevenLabsConfig:
     api_key: str
     voices: dict[Language, str]
-    model_id: str = "eleven_multilingual_v2"
+    model_id: str = "eleven_v4"
     max_chunk_chars: int = 4000
     send_language_code: bool = False
     stitching: bool = True
