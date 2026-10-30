@@ -3,7 +3,7 @@ import itertools
 import typing
 
 from magazynflary_audio import audio
-from magazynflary_audio.authors import get_author_name
+from magazynflary_audio.authors import get_author_info
 from magazynflary_audio.data import DATA_DIR, cache
 from magazynflary_audio.types import ArticleReader, Audio, Language, ParsedArticle, TextToSpeechSystem
 
@@ -16,8 +16,13 @@ class ArticleReaderImpl[SpeechContext](ArticleReader):
     tts_cache_enabled: bool
 
     def read_article(self, article: ParsedArticle, *, language: Language) -> Audio:
+        author_info = get_author_info(article.author_slug)
+        gendered_author = "Autorka" if author_info.is_female else "Autor"
         (title_audio, author_audio), speech_context = self._text_to_speech(
-            chunks=[f"Artykuł pod tytułem: {article.title}", f"Autor: {get_author_name(article.author_slug)}"],
+            chunks=[
+                f"Artykuł pod tytułem: {article.title}",
+                f"{gendered_author}: {author_info.name}",
+            ],
             language=language,
         )
         sample_rate = title_audio.sample_rate

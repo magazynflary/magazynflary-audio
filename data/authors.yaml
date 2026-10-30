@@ -1,18 +1,54 @@
-adam-sensowny: Adam Sensowny
-angelika-frankowska: Angelika Frankowska
-arkadiusz-gąsiorek: Arkadiusz Gąsiorek
-bartosz-marcinkowski: Bartosz Marcinkowski
-dominik-kacprowski: Dominik Kacprowski
-gabriela-palonek: Gabriela Palonek
-hubert-norek: Hubert Norek
-jakub-barański: Jakub Barański
-jakub-bukowski: Jakub Bukowski
-joanna-pędzich-opioła: Joanna Pędzich-Opioła
-kamil-janda: Kamil Janda
-katarzyna-brzozowska: Katarzyna Brzozowska
-mateusz-bratkowski: Mateusz Bratkowski
-michał-luszawski: Michał Luszawski
-oleksii-cheplianskyi: Oleksii Czeplański
-piotr-domański: Piotr Domański
-redakcja: Redakcja
-tomasz-jamroszczak: Tomasz Jamroszczak
+adam-sensowny:
+  is_female: false
+  name: Adam Sensowny
+angelika-frankowska:
+  is_female: true
+  name: Angelika Frankowska
+arkadiusz-gąsiorek:
+  is_female: false
+  name: Arkadiusz Gąsiorek
+bartosz-marcinkowski:
+  is_female: false
+  name: Bartosz Marcinkowski
+dominik-kacprowski:
+  is_female: false
+  name: Dominik Kacprowski
+gabriela-palonek:
+  is_female: true
+  name: Gabriela Palonek
+hubert-norek:
+  is_female: false
+  name: Hubert Norek
+jakub-barański:
+  is_female: false
+  name: Jakub Barański
+jakub-bukowski:
+  is_female: false
+  name: Jakub Bukowski
+joanna-pędzich-opioła:
+  is_female: true
+  name: Joanna Pędzich-Opioła
+kamil-janda:
+  is_female: false
+  name: Kamil Janda
+katarzyna-brzozowska:
+  is_female: true
+  name: Katarzyna Brzozowska
+mateusz-bratkowski:
+  is_female: false
+  name: Mateusz Bratkowski
+michał-luszawski:
+  is_female: false
+  name: Michał Luszawski
+oleksii-cheplianskyi:
+  is_female: false
+  name: Oleksii Czeplański
+piotr-domański:
+  is_female: false
+  name: Piotr Domański
+redakcja:
+  is_female: false
+  name: Redakcja
+tomasz-jamroszczak:
+  is_female: false
+  name: Tomasz Jamroszczak

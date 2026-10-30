@@ -51,13 +51,14 @@ Anything else (other heading levels, lists, images, other shortcodes, …) makes
 
 ### Updating authors
 
-Author names are stored in `data/authors.yaml`. To add new authors from the prod repo (it clones
-`magazynflary/prod` and reads `content/autorzy/*.md`):
+Author names and genders (`is_female`) are stored in `data/authors.yaml`. To add new authors from the
+prod repo (it clones `magazynflary/prod` and reads `content/autorzy/*.md`):
 
 ```sh
 uv run python -m magazynflary_audio.authors
 ```
 
+It asks about the gender of every new author, suggesting female when the first name ends with -a.
 It fails if an existing author's name has changed, so such changes need to be resolved by hand.
 
 ## Code overview
@@ -69,7 +70,7 @@ All code lives in `src/magazynflary_audio/`:
 - `article_reading.py`: `ParsedArticle` to `Audio` – chunking text for TTS, adding jingles and pauses,
 - `elevenlabs.py`: ElevenLabs TTS client (with retries and request stitching for consistent intonation),
 - `audio.py`: helpers for concatenating, resampling and reading audio,
-- `authors.py`: author slug to name lookup and the authors file updater,
+- `authors.py`: author slug to name and gender lookup and the authors file updater,
 - `cli.py`: the command line interface.
 
 ## Development
