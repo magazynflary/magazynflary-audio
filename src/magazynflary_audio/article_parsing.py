@@ -82,7 +82,7 @@ def _required_string(front_matter: dict[str, object], key: str) -> str:
 
 
 def _remove_pullquote_markers(body: MarkdownText) -> MarkdownText:
-    """Replaces pullquote markers with blank lines, so the pullquote becomes a normal paragraph"""
+    """Removes pullquote markers; without blank lines around it, the pullquote joins the surrounding paragraph"""
     in_lines = body.splitlines()
     out_lines = []
     in_pullquote = False
