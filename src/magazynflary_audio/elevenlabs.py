@@ -27,13 +27,14 @@ RETRY_STATUSES = {429, 500, 502, 503, 504}
 
 
 type RequestId = str
+type ElevenLabsSpeechContext = list[RequestId]
 
 
 class TTSError(Exception):
     pass
 
 
-class ElevenLabs(TextToSpeechSystem):
+class ElevenLabs(TextToSpeechSystem[ElevenLabsSpeechContext]):
     def __init__(
         self,
         config: ElevenLabsConfig,
@@ -68,10 +69,11 @@ class ElevenLabs(TextToSpeechSystem):
         *,
         language: Language,
         on_chunk: Callable[[int], None] | None = None,
-    ) -> Audio:
+        speech_context: ElevenLabsSpeechContext | None = None,
+    ) -> tuple[list[Audio], ElevenLabsSpeechContext]:
         sample_rate = 24000
         voice_id = self.config.voices[language]
-        request_ids: list[RequestId] = []
+        request_ids: list[RequestId] = speech_context or []
         chunk_outputs: list[bytes] = []
         for i, chunk in enumerate(chunks):
             if len(chunk) > self.get_max_chunk_length(chunk):
@@ -91,11 +93,16 @@ class ElevenLabs(TextToSpeechSystem):
         int16_little_endian_dtype = np.dtype("<i2")
         # Absolute value of the int16 minimum (one more than the max), so scaled samples stay in [-1, 1]
         int16_abs_max_value = np.float32(-np.iinfo(int16_little_endian_dtype).min)
-        samples_int16 = np.frombuffer(b"".join(chunk_outputs), int16_little_endian_dtype)
-        return Audio(
-            samples=samples_int16.astype(np.float32) / int16_abs_max_value,
-            sample_rate=sample_rate,
-        )
+        audio = [
+            Audio(
+                samples=(
+                    np.frombuffer(chunk_output, int16_little_endian_dtype).astype(np.float32) / int16_abs_max_value
+                ),
+                sample_rate=sample_rate,
+            )
+            for chunk_output in chunk_outputs
+        ]
+        return audio, request_ids
 
     def _synthesize_chunk(
         self,

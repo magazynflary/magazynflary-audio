@@ -53,7 +53,7 @@ class ChunkTooLongError(ValueError):
         super().__init__(f"chunk {chunk_index} is too long")
 
 
-class TextToSpeechSystem(typing.Protocol):
+class TextToSpeechSystem[SpeechContext](typing.Protocol):
     def get_max_chunk_length(self, chunk: str) -> int:
         """Returns the maximum length of a chunk that can be synthesized
 
@@ -66,7 +66,8 @@ class TextToSpeechSystem(typing.Protocol):
         *,
         language: Language,
         on_chunk: typing.Callable[[int], None] | None = None,
-    ) -> Audio:
+        speech_context: SpeechContext | None = None,
+    ) -> tuple[list[Audio], SpeechContext]:
         """Converts text to speech
 
         Raises ChunkTooLongError if any chunk is too long

@@ -6,9 +6,12 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "httpx>=0.28.1",
+    "joblib>=1.6.0",
     "markdown-it-py>=4.2.0",
     "numpy>=2.5.4",
     "pyyaml>=6.0.3",
+    "scipy>=1.18.1",
+    "soundfile>=0.14.0",
 ]
 
 [build-system]
@@ -25,11 +28,16 @@ select = ["E", "F", "W", "I", "B", "UP"]
 strict = true
 files = ["src"]
 
+[[tool.mypy.overrides]]
+module = ["joblib", "soundfile"]
+ignore_missing_imports = true
+
 [dependency-groups]
 dev = [
     "mypy",
     "pytest",
     "ruff",
+    "scipy-stubs>=1.18.1.1",
     "types-pyyaml>=6.0.12.20260906",
 ]
 

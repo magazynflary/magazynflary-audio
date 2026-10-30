@@ -40,5 +40,5 @@ Jako użytkownicy zostaliśmy tak do tego przyzwyczajeni, że nie tylko nas to n
 
 ## Lorem Ipsum
 
-Lorem Ipsum redukuje czasem pozwala zredukować wysiłek tworzenia przykładowych tekstów. Szkoda, że nie ma polskiej wersji przydatnej do testowania rozwiązań *text-to-speech** (TTS) w języku polskim.
+Lorem Ipsum czasem pozwala zredukować wysiłek tworzenia przykładowych tekstów. Szkoda, że nie ma polskiej wersji przydatnej do testowania rozwiązań **text-to-speech** (TTS) w języku polskim.
 

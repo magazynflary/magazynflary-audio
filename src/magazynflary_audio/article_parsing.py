@@ -4,13 +4,12 @@ import re
 import typing
 from collections.abc import Sequence
 
-import yaml
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 
+from .markdown_frontmatter import required_string, split_front_matter
 from .types import ArticleParser, CleanText, MarkdownText, ParsedArticle, ParsedArticleSection, ParserError
 
-FRONT_MATTER_DELIMITER = "---"
 PULLQUOTE_OPEN_RE = re.compile(r"^\s*\{\{<\s*pullquote\s*>\}\}\s*$")
 PULLQUOTE_CLOSE_RE = re.compile(r"^\s*\{\{<\s*/pullquote\s*>\}\}\s*$")
 SECTION_HEADER_TAG = "h2"
@@ -46,39 +45,15 @@ class ArticleParserImpl(ArticleParser):
         self._markdown = MarkdownIt("commonmark")
 
     def parse_article_markdown(self, article_markdown: MarkdownText) -> ParsedArticle:
-        front_matter, body_markdown = _split_front_matter(article_markdown)
+        front_matter, body_markdown = split_front_matter(article_markdown)
         tokens = self._markdown.parse(_remove_pullquote_markers(body_markdown))
         body = _parse_body(tokens)
         return ParsedArticle(
-            author_slug=_required_string(front_matter, "author"),
-            title=_clean(_required_string(front_matter, "title")),
+            author_slug=required_string(front_matter, "author"),
+            title=_clean(required_string(front_matter, "title")),
             intro_paragraphs=body.intro_paragraphs,
             sections=body.sections,
         )
-
-
-def _split_front_matter(article_markdown: MarkdownText) -> tuple[dict[str, object], MarkdownText]:
-    lines = article_markdown.lstrip().splitlines()
-    if not lines or lines[0].rstrip() != FRONT_MATTER_DELIMITER:
-        raise ParserError("Article does not start with front matter")
-    try:
-        end = next(i for i, line in enumerate(lines[1:], 1) if line.rstrip() == FRONT_MATTER_DELIMITER)
-    except StopIteration:
-        raise ParserError("Front matter is not closed") from None
-    try:
-        front_matter = yaml.safe_load("\n".join(lines[1:end]))
-    except yaml.YAMLError as e:
-        raise ParserError(f"Invalid front matter YAML: {e}") from e
-    if not isinstance(front_matter, dict):
-        raise ParserError("Front matter is not a mapping")
-    return front_matter, "\n".join(lines[end + 1 :])
-
-
-def _required_string(front_matter: dict[str, object], key: str) -> str:
-    value = front_matter.get(key)
-    if not isinstance(value, str) or not value.strip():
-        raise ParserError(f"Front matter field {key!r} is missing or not a non-empty string")
-    return value.strip()
 
 
 def _remove_pullquote_markers(body: MarkdownText) -> MarkdownText:
