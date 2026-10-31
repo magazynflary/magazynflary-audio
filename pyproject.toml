@@ -1,7 +1,7 @@
 [project]
 name = "magazynflary-audio"
 version = "0.1.0"
-description = "Add your description here"
+description = "Turns Magazyn Flary articles into audio"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
