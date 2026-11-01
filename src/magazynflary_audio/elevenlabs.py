@@ -3,7 +3,6 @@
 import dataclasses
 import os
 import time
-from collections.abc import Callable
 from typing import Any, Self, override
 
 import httpx
@@ -47,8 +46,9 @@ class ElevenLabs(TextToSpeechSystem[ElevenLabsSpeechContext]):
 
     @classmethod
     def from_env(cls) -> Self:
-        api_key = os.environ["ELEVENLABS_API_KEY"]
-        assert api_key
+        api_key = os.environ.get("ELEVENLABS_API_KEY")
+        if not api_key:
+            raise TTSError("ELEVENLABS_API_KEY environment variable is not set or empty")
         return cls(
             config=ElevenLabsConfig(
                 api_key=api_key,
@@ -57,6 +57,18 @@ class ElevenLabs(TextToSpeechSystem[ElevenLabsSpeechContext]):
             client=httpx.Client(timeout=httpx.Timeout(30, read=600)),
             attempts=5,
         )
+
+    @override
+    def cache_key(self) -> str:
+        cached_fields = ["voices", "model_id", "max_chunk_chars", "send_language_code", "stitching"]
+        secret_fields = ["api_key"]
+        other_fields = {f.name for f in dataclasses.fields(self.config)} - set(cached_fields) - set(secret_fields)
+        cached_secrets = set(cached_fields) & set(secret_fields)
+        assert not other_fields, other_fields
+        assert not cached_secrets, cached_secrets
+        # All config fields except the API key, which does not affect the audio and must not land in the cache
+        fields = {k: getattr(self.config, k) for k in cached_fields}
+        return f"{type(self).__name__}({fields!r})"
 
     @override
     def get_max_chunk_length(self, chunk: str) -> int:
@@ -68,7 +80,6 @@ class ElevenLabs(TextToSpeechSystem[ElevenLabsSpeechContext]):
         chunks: list[str],
         *,
         language: Language,
-        on_chunk: Callable[[int], None] | None = None,
         speech_context: ElevenLabsSpeechContext | None = None,
     ) -> tuple[list[Audio], ElevenLabsSpeechContext]:
         sample_rate = 24000
@@ -88,8 +99,6 @@ class ElevenLabs(TextToSpeechSystem[ElevenLabsSpeechContext]):
             chunk_outputs.append(chunk_output)
             if request_id:
                 request_ids.append(request_id)
-            if on_chunk:
-                on_chunk(i)
         int16_little_endian_dtype = np.dtype("<i2")
         # Absolute value of the int16 minimum (one more than the max), so scaled samples stay in [-1, 1]
         int16_abs_max_value = np.float32(-np.iinfo(int16_little_endian_dtype).min)

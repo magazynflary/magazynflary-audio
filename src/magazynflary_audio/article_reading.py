@@ -73,19 +73,33 @@ class ArticleReaderImpl[SpeechContext](ArticleReader):
         speech_context: SpeechContext | None = None,
     ) -> tuple[list[Audio], SpeechContext]:
         if self.tts_cache_enabled:
-            return _cached_text_to_speech(tts=self.tts, chunks=chunks, language=language, speech_context=speech_context)
+            return _cached_text_to_speech(
+                tts=self.tts,
+                tts_cache_key=self.tts.cache_key(),
+                chunks=chunks,
+                language=language,
+                speech_context=speech_context,
+            )
         else:
             return self.tts.text_to_speech(chunks, language=language, speech_context=speech_context)
 
 
-@cache(ignore=["tts", "speech_context"])
+@cache(ignore=["tts"])
 def _cached_text_to_speech[SpeechContext](
     *,
     tts: TextToSpeechSystem[SpeechContext],
+    tts_cache_key: str,
     chunks: list[str],
     language: Language,
     speech_context: SpeechContext | None = None,
 ) -> tuple[list[Audio], SpeechContext]:
+    """Caches by the TTS configuration (tts_cache_key stands in for tts itself), text, language and speech context
+
+    The speech context is part of the key because with request stitching the same text sounds different depending
+    on what was read before it. As long as everything before is cached too, the cached speech contexts are replayed
+    and match; once a chunk is synthesized live, its new speech context makes every later chunk of the same run miss
+    the cache. So editing a section re-synthesizes that section and the ones after it, but not the ones before.
+    """
     return tts.text_to_speech(chunks, language=language, speech_context=speech_context)
 
 

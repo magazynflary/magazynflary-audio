@@ -11,6 +11,9 @@ from magazynflary_audio.types import Audio, Language, TextToSpeechSystem
 class FixedLengthTextToSpeech(TextToSpeechSystem[None]):
     max_chunk_length: int
 
+    def cache_key(self) -> str:
+        return f"FixedLengthTextToSpeech({self.max_chunk_length})"
+
     def get_max_chunk_length(self, chunk: str) -> int:
         return self.max_chunk_length
 
@@ -19,7 +22,6 @@ class FixedLengthTextToSpeech(TextToSpeechSystem[None]):
         chunks: list[str],
         *,
         language: Language,
-        on_chunk: typing.Callable[[int], None] | None = None,
         speech_context: None = None,
     ) -> tuple[list[Audio], None]:
         raise NotImplementedError

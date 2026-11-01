@@ -11,10 +11,9 @@ from magazynflary_audio.data import DATA_DIR
 from magazynflary_audio.logging import setup_logging
 from magazynflary_audio.markdown_frontmatter import required_string, split_front_matter
 from magazynflary_audio.prod_repo import PROD_REPO_AUTHORS_SUBDIR, clone_prod_repo
+from magazynflary_audio.types import AuthorInfo
 
 __all__ = ("UnknownAuthorError", "get_author_info")
-
-from magazynflary_audio.types import AuthorInfo
 
 LOG = logging.getLogger(__name__)
 

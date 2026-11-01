@@ -1,9 +1,9 @@
 import argparse
 import datetime
 import logging
-import pathlib
 import subprocess
 import sys
+from pathlib import Path
 
 import soundfile
 
@@ -26,10 +26,10 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")
 
     read_single_article = subparsers.add_parser("read-single-article", help="read an article out loud")
-    read_single_article.add_argument("--article", type=pathlib.Path, help="article markdown file")
+    read_single_article.add_argument("--article", type=Path, help="article markdown file")
     read_single_article.add_argument("--tts-cache", action="store_true", help="use TTS cache")
     read_single_article.add_argument("--paplay", action="store_true", help="play the audio out loud with paplay")
-    read_single_article.add_argument("--output", type=pathlib.Path, help="save the audio to a .wav or .mp3 file")
+    read_single_article.add_argument("--output", type=Path, help="save the audio to a .wav or .mp3 file")
 
     read_prod_articles = subparsers.add_parser(
         "read-prod-articles", help="read articles published in the prod repo within a date range"
@@ -43,7 +43,7 @@ def main() -> None:
         "--to-date", type=datetime.date.fromisoformat, help="last publication date, YYYY-MM-DD, defaults to no limit"
     )
     read_prod_articles.add_argument(
-        "--output-dir", type=pathlib.Path, required=True, help="directory to save the audio files to"
+        "--output-dir", type=Path, required=True, help="directory to save the audio files to"
     )
     read_prod_articles.add_argument(
         "--output-format", choices=[suffix.removeprefix(".") for suffix in OUTPUT_FORMATS], required=True
@@ -76,9 +76,7 @@ def main() -> None:
             )
 
 
-def _read_single_article(
-    *, article_path: pathlib.Path | None, tts_cache: bool, paplay: bool, output: pathlib.Path | None
-) -> None:
+def _read_single_article(*, article_path: Path | None, tts_cache: bool, paplay: bool, output: Path | None) -> None:
     article_parser = ArticleParserImpl()
     article: ParsedArticle
     author_info: AuthorInfo
@@ -88,8 +86,8 @@ def _read_single_article(
         )
         author_info = AuthorInfo(name="Adam Sensowny", is_female=False)
     else:
-        article = ArticleParserImpl().parse_article_markdown(article_path.read_text(encoding="utf-8"))
-        author_info = get_author_info(article_path.stem)
+        article = article_parser.parse_article_markdown(article_path.read_text(encoding="utf-8"))
+        author_info = get_author_info(article.author_slug)
 
     LOG.info("Parsed article %r by %s", article.title, article.author_slug)
     audio = ArticleReaderImpl(
@@ -107,23 +105,27 @@ def _read_prod_articles(
     *,
     since_date: datetime.date | None,
     to_date: datetime.date | None,
-    output_dir: pathlib.Path,
+    output_dir: Path,
     output_format: str,
     skip_drafts: bool,
     tts_cache: bool,
     dry_run: bool,
 ) -> None:
     with clone_prod_repo() as repo_dir:
-        paths = find_articles(repo_dir, since_date=since_date, to_date=to_date, skip_drafts=skip_drafts)
-        LOG.info("Found %d articles from %s to %s", len(paths), since_date or "the beginning", to_date or "now")
-        markdowns = {path.stem: path.read_text(encoding="utf-8") for path in paths}
+        found = find_articles(repo_dir, since_date=since_date, to_date=to_date, skip_drafts=skip_drafts)
+        LOG.info("Found %d articles from %s to %s", len(found.paths), since_date or "the beginning", to_date or "now")
+        markdowns = {path.stem: path.read_text(encoding="utf-8") for path in found.paths}
 
     article_parser = ArticleParserImpl()
     reader = None if dry_run else ArticleReaderImpl(tts=ElevenLabs.from_env(), tts_cache_enabled=tts_cache)
     if not dry_run:
         output_dir.mkdir(parents=True, exist_ok=True)
+    read = 0
     output_exists = 0
     failed = 0
+    for path, error in found.invalid.items():
+        LOG.error("Failed to read front matter of article %s: %s", path.stem, error)
+        failed += 1
     for stem, markdown in markdowns.items():
         output_path = output_dir / f"{stem}.{output_format}"
         if output_path.exists():
@@ -132,6 +134,7 @@ def _read_prod_articles(
             continue
         if reader is None:
             LOG.info("Would read article %s to %s", stem, output_path)
+            read += 1
             continue
         try:
             article = article_parser.parse_article_markdown(markdown)
@@ -155,10 +158,11 @@ def _read_prod_articles(
             failed += 1
         else:
             LOG.info("Read article %s: %.1f s of audio", stem, len(audio.samples) / audio.sample_rate)
+            read += 1
 
     LOG.info(
         "Done: %d articles %s, %d failed, %d skipped because the output file already exists",
-        len(markdowns) - failed - output_exists,
+        read,
         "would be read" if dry_run else "read fine",
         failed,
         output_exists,
@@ -167,7 +171,7 @@ def _read_prod_articles(
         sys.exit(1)
 
 
-def _save(audio: Audio, path: pathlib.Path) -> None:
+def _save(audio: Audio, path: Path) -> None:
     soundfile.write(path, data=audio.samples, samplerate=audio.sample_rate, format=OUTPUT_FORMATS[path.suffix.lower()])
     LOG.info("Saved audio to %s", path)
 

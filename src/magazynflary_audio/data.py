@@ -1,10 +1,10 @@
-import pathlib
 import typing
 from collections.abc import Callable
+from pathlib import Path
 
 import joblib
 
-HERE = pathlib.Path(__file__).parent
+HERE = Path(__file__).parent
 REPO_ROOT = HERE.parents[1]
 DATA_DIR = REPO_ROOT / "data"
 

@@ -33,7 +33,10 @@ uv run python -m magazynflary_audio read-single-article --article path/to/articl
 | `--paplay`            | Play the audio through PulseAudio/PipeWire with `paplay`.                                        |
 | `--tts-cache`         | Cache TTS results in `data/cache/` so re-running on the same text does not call ElevenLabs again. |
 
-ElevenLabs usage is paid per character, so use `--tts-cache` while iterating.
+ElevenLabs usage is paid per character, so use `--tts-cache` while iterating. The cache is keyed by the TTS
+configuration (model, voice, stitching, …) as well as the text, so changing the configuration does not return stale
+audio. With request stitching, audio also depends on what was read before it, so after editing a section, that
+section and the ones after it are synthesized again, but the ones before it still come from the cache.
 
 ### Supported article markdown
 
@@ -61,14 +64,17 @@ uv run python -m magazynflary_audio read-prod-articles --since-date 2026-05-01 -
     --output-dir out --output-format mp3 --skip-drafts --tts-cache
 ```
 
-An article that cannot be read (one the parser does not support, an author missing from
-`data/authors.yaml`, or one the article reader splits into a chunk too long for the TTS) is logged as an error and skipped.
+An article that cannot be read (invalid front matter, e.g. a missing `date` or a `draft` that is not
+`true`/`false`, one the parser does not support, an author missing from `data/authors.yaml`, or one the article reader
+splits into a chunk too long for the TTS) is logged as an error and skipped. An article with invalid front matter counts
+as failed even if it might be outside the date range, since its date cannot be known.
 Any other error, e.g. ElevenLabs being unreachable, stops the run. An article whose output file already exists is not read again
 (and nothing is overwritten); it is logged as an error and counted as a separate kind of failure. At the end it logs how many articles were read fine and how
 many failed, and exits with 1 if any failed.
 
 With `--dry-run` it only logs which articles would be read and which files they would be saved to, without
-calling ElevenLabs or writing anything. Existing output files are reported as errors in a dry run too.
+calling ElevenLabs or writing anything. Existing output files and invalid front matter are reported as errors in a
+dry run too.
 
 ### Updating authors
 

@@ -54,6 +54,13 @@ class ChunkTooLongError(ValueError):
 
 
 class TextToSpeechSystem[SpeechContext](typing.Protocol):
+    def cache_key(self) -> str:
+        """Identifies everything in this system's configuration that affects the audio it produces
+
+        Used in the TTS cache key, so a configuration change (e.g. another voice or model) is not served stale audio.
+        Must not contain secrets, as it is stored in the cache.
+        """
+
     def get_max_chunk_length(self, chunk: str) -> int:
         """Returns the maximum length of a chunk that can be synthesized
 
@@ -65,7 +72,6 @@ class TextToSpeechSystem[SpeechContext](typing.Protocol):
         chunks: list[str],
         *,
         language: Language,
-        on_chunk: typing.Callable[[int], None] | None = None,
         speech_context: SpeechContext | None = None,
     ) -> tuple[list[Audio], SpeechContext]:
         """Converts text to speech

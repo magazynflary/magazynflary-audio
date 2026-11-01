@@ -7,8 +7,15 @@ from collections.abc import Sequence
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 
-from .markdown_frontmatter import required_string, split_front_matter
-from .types import ArticleParser, CleanText, MarkdownText, ParsedArticle, ParsedArticleSection, ParserError
+from magazynflary_audio.markdown_frontmatter import required_string, split_front_matter
+from magazynflary_audio.types import (
+    ArticleParser,
+    CleanText,
+    MarkdownText,
+    ParsedArticle,
+    ParsedArticleSection,
+    ParserError,
+)
 
 PULLQUOTE_OPEN_RE = re.compile(r"^\s*\{\{<\s*pullquote\s*>\}\}\s*$")
 PULLQUOTE_CLOSE_RE = re.compile(r"^\s*\{\{<\s*/pullquote\s*>\}\}\s*$")
@@ -95,7 +102,7 @@ def _parse_body(tokens: Sequence[Token]) -> Body:
                 paragraphs = sections[-1][1] if sections else intro_paragraphs
                 paragraphs.append(clean_text)
             case _:
-                assert typing.assert_never(block.kind)
+                typing.assert_never(block.kind)
 
     for header, paragraphs in sections:
         if not paragraphs:

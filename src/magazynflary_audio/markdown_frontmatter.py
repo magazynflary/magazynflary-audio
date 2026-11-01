@@ -1,6 +1,6 @@
 import yaml
 
-from .types import MarkdownText, ParserError
+from magazynflary_audio.types import MarkdownText, ParserError
 
 FRONT_MATTER_DELIMITER = "---"
 
