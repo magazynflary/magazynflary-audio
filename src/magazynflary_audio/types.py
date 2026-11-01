@@ -74,6 +74,12 @@ class TextToSpeechSystem[SpeechContext](typing.Protocol):
         """
 
 
+@dataclasses.dataclass(frozen=True, slots=True)
+class AuthorInfo:
+    name: str
+    is_female: bool
+
+
 class ArticleReader(typing.Protocol):
-    def read_article(self, article: ParsedArticle, *, language: Language) -> Audio:
+    def read_article(self, article: ParsedArticle, *, language: Language, author_info: AuthorInfo) -> Audio:
         """Reads the article"""

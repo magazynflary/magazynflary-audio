@@ -13,7 +13,9 @@ from magazynflary_audio.data import DATA_DIR
 from magazynflary_audio.logging import setup_logging
 from magazynflary_audio.markdown_frontmatter import required_string, split_front_matter
 
-__all__ = ("AuthorInfo", "get_author_info")
+__all__ = ("get_author_info",)
+
+from magazynflary_audio.types import AuthorInfo
 
 LOG = logging.getLogger(__name__)
 
@@ -25,23 +27,12 @@ PROD_REPO_URL = "https://github.com/magazynflary/prod.git"
 PROD_REPO_AUTHORS_SUBDIR = Path("content") / "autorzy"
 
 
-@dataclasses.dataclass(frozen=True, slots=True)
-class AuthorInfo:
-    name: AuthorName
-    is_female: bool
-
-
-PREDEFINED_AUTHORS: dict[AuthorSlug, AuthorInfo] = {
-    "adam-sensowny": AuthorInfo(name="Adam Sensowny", is_female=False),
-}
+def get_author_info(slug: str) -> AuthorInfo:
+    return _load_authors(AUTHORS_FILE)[slug]
 
 
 def _load_authors(authors_file_path: Path) -> dict[AuthorSlug, AuthorInfo]:
     return {slug: AuthorInfo(**values) for slug, values in yaml.safe_load(authors_file_path.read_text()).items()}
-
-
-def get_author_info(slug: str) -> AuthorInfo:
-    return _load_authors(AUTHORS_FILE)[slug]
 
 
 def _guess_is_female(name: AuthorName) -> bool:
@@ -81,7 +72,7 @@ def _update_authors_file(
     ask_is_female: Callable[[AuthorName], bool] = _ask_is_female,
 ) -> None:
     LOG.info("Fetched authors count: %s", len(fetched_values))
-    current_values = _load_authors(authors_file_path) if authors_file_path.exists() else PREDEFINED_AUTHORS
+    current_values = _load_authors(authors_file_path) if authors_file_path.exists() else {}
     LOG.info("Current authors count: %s", len(current_values))
     updated_values = dict(current_values)
     for slug, name in fetched_values.items():

@@ -7,27 +7,38 @@ import soundfile
 
 from magazynflary_audio.article_parsing import ArticleParserImpl
 from magazynflary_audio.article_reading import ArticleReaderImpl
+from magazynflary_audio.authors import get_author_info
 from magazynflary_audio.data import DATA_DIR
 from magazynflary_audio.elevenlabs import ElevenLabs
 from magazynflary_audio.logging import setup_logging
-from magazynflary_audio.types import Audio
+from magazynflary_audio.types import Audio, AuthorInfo, ParsedArticle
 
 LOG = logging.getLogger(__name__)
 
-EXAMPLE_ARTICLE_FILE = DATA_DIR / "article" / "example-1-lorem-ipsum.md"
 OUTPUT_FORMATS = {".wav": "WAV", ".mp3": "MP3"}
 
 
 def main() -> None:
     args = _parse_args()
     setup_logging()
-    article_markdown = args.article.read_text(encoding="utf-8")
-    article = ArticleParserImpl().parse_article_markdown(article_markdown)
+
+    article_parser = ArticleParserImpl()
+    article: ParsedArticle
+    author_info: AuthorInfo
+    if args.article is None:
+        article = article_parser.parse_article_markdown(
+            (DATA_DIR / "article" / "example-1-lorem-ipsum.md").read_text(encoding="utf-8")
+        )
+        author_info = AuthorInfo(name="Adam Sensowny", is_female=False)
+    else:
+        article = ArticleParserImpl().parse_article_markdown(args.article.read_text(encoding="utf-8"))
+        author_info = get_author_info(args.article.stem)
+
     LOG.info("Parsed article %r by %s", article.title, article.author_slug)
     audio = ArticleReaderImpl(
         tts=ElevenLabs.from_env(),
         tts_cache_enabled=args.tts_cache,
-    ).read_article(article, language="pl")
+    ).read_article(article, language="pl", author_info=author_info)
     LOG.info("Read article: %.1f s of audio at %d Hz", len(audio.samples) / audio.sample_rate, audio.sample_rate)
     if args.output is not None:
         _save(audio, args.output)
@@ -37,7 +48,7 @@ def main() -> None:
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Reads an article out loud")
-    parser.add_argument("--article", type=pathlib.Path, default=EXAMPLE_ARTICLE_FILE, help="article markdown file")
+    parser.add_argument("--article", type=pathlib.Path, help="article markdown file")
     parser.add_argument("--tts-cache", action="store_true", help="use TTS cache")
     parser.add_argument("--paplay", action="store_true", help="play the audio out loud with paplay")
     parser.add_argument("--output", type=pathlib.Path, help="save the audio to a .wav or .mp3 file")

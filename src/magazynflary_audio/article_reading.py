@@ -3,9 +3,8 @@ import itertools
 import typing
 
 from magazynflary_audio import audio
-from magazynflary_audio.authors import get_author_info
 from magazynflary_audio.data import DATA_DIR, cache
-from magazynflary_audio.types import ArticleReader, Audio, Language, ParsedArticle, TextToSpeechSystem
+from magazynflary_audio.types import ArticleReader, Audio, AuthorInfo, Language, ParsedArticle, TextToSpeechSystem
 
 __all__ = ("ArticleReaderImpl",)
 
@@ -15,8 +14,7 @@ class ArticleReaderImpl[SpeechContext](ArticleReader):
     tts: TextToSpeechSystem[SpeechContext]
     tts_cache_enabled: bool
 
-    def read_article(self, article: ParsedArticle, *, language: Language) -> Audio:
-        author_info = get_author_info(article.author_slug)
+    def read_article(self, article: ParsedArticle, *, language: Language, author_info: AuthorInfo) -> Audio:
         gendered_author = "Autorka" if author_info.is_female else "Autor"
         (title_audio, author_audio), speech_context = self._text_to_speech(
             chunks=[
