@@ -2,8 +2,6 @@
 
 import dataclasses
 import logging
-import subprocess
-import tempfile
 from collections.abc import Callable
 from pathlib import Path
 
@@ -12,8 +10,9 @@ import yaml
 from magazynflary_audio.data import DATA_DIR
 from magazynflary_audio.logging import setup_logging
 from magazynflary_audio.markdown_frontmatter import required_string, split_front_matter
+from magazynflary_audio.prod_repo import PROD_REPO_AUTHORS_SUBDIR, clone_prod_repo
 
-__all__ = ("get_author_info",)
+__all__ = ("UnknownAuthorError", "get_author_info")
 
 from magazynflary_audio.types import AuthorInfo
 
@@ -23,12 +22,20 @@ type AuthorSlug = str
 type AuthorName = str
 
 AUTHORS_FILE = DATA_DIR / "authors.yaml"
-PROD_REPO_URL = "https://github.com/magazynflary/prod.git"
-PROD_REPO_AUTHORS_SUBDIR = Path("content") / "autorzy"
+
+
+class UnknownAuthorError(KeyError):
+    def __init__(self, slug: str) -> None:
+        super().__init__(slug)
+        self.slug = slug
 
 
 def get_author_info(slug: str) -> AuthorInfo:
-    return _load_authors(AUTHORS_FILE)[slug]
+    """Returns the author's info or raises UnknownAuthorError if the author is not in the authors file"""
+    try:
+        return _load_authors(AUTHORS_FILE)[slug]
+    except KeyError:
+        raise UnknownAuthorError(slug) from None
 
 
 def _load_authors(authors_file_path: Path) -> dict[AuthorSlug, AuthorInfo]:
@@ -55,11 +62,9 @@ def _ask_is_female(name: AuthorName) -> bool:
 
 def _fetch_authors() -> dict[AuthorSlug, AuthorName]:
     """Clones the prod repo and reads author names from the front matter of its author files"""
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        LOG.info("Cloning %s", PROD_REPO_URL)
-        subprocess.run(["git", "clone", "--quiet", "--depth", "1", PROD_REPO_URL, tmp_dir], check=True)
+    with clone_prod_repo() as repo_dir:
         authors: dict[str, str] = {}
-        for path in sorted((Path(tmp_dir) / PROD_REPO_AUTHORS_SUBDIR).glob("*.md")):
+        for path in sorted((repo_dir / PROD_REPO_AUTHORS_SUBDIR).glob("*.md")):
             front_matter, _ = split_front_matter(path.read_text())
             authors[path.stem] = required_string(front_matter, "name")
         return authors

@@ -21,10 +21,10 @@ export ELEVENLABS_API_KEY=...
 Read an article and save it to a file:
 
 ```sh
-uv run python -m magazynflary_audio --article path/to/article.md --output article.mp3
+uv run python -m magazynflary_audio read-single-article --article path/to/article.md --output article.mp3
 ```
 
-Options:
+`read-single-article` options:
 
 | Option                | Description                                                                                      |
 |-----------------------|--------------------------------------------------------------------------------------------------|
@@ -49,6 +49,27 @@ followed by a CommonMark body. The body may contain only:
 Anything else (other heading levels, lists, images, other shortcodes, …) makes the parser fail with a
 `ParserError` pointing at the offending line, rather than silently reading something wrong.
 
+### Reading prod articles
+
+Read all articles published in the prod repo within a date range (inclusive, by the front matter `date`;
+without `--since-date` or `--to-date` there is no limit on that side). Drafts are included unless
+`--skip-drafts` is given. It clones `magazynflary/prod` and saves one file per article, named after the
+article file, e.g. `out/samotni-wśród-ludzi.mp3`:
+
+```sh
+uv run python -m magazynflary_audio read-prod-articles --since-date 2026-05-01 --to-date 2026-09-30 \
+    --output-dir out --output-format mp3 --skip-drafts --tts-cache
+```
+
+An article that cannot be read (one the parser does not support, an author missing from
+`data/authors.yaml`, or one the article reader splits into a chunk too long for the TTS) is logged as an error and skipped.
+Any other error, e.g. ElevenLabs being unreachable, stops the run. An article whose output file already exists is not read again
+(and nothing is overwritten); it is logged as an error and counted as a separate kind of failure. At the end it logs how many articles were read fine and how
+many failed, and exits with 1 if any failed.
+
+With `--dry-run` it only logs which articles would be read and which files they would be saved to, without
+calling ElevenLabs or writing anything. Existing output files are reported as errors in a dry run too.
+
 ### Updating authors
 
 Author names and genders (`is_female`) are stored in `data/authors.yaml`. To add new authors from the
@@ -70,6 +91,7 @@ All code lives in `src/magazynflary_audio/`:
 - `article_reading.py`: `ParsedArticle` to `Audio` – chunking text for TTS, adding jingles and pauses,
 - `elevenlabs.py`: ElevenLabs TTS client (with retries and request stitching for consistent intonation),
 - `audio.py`: helpers for concatenating, resampling and reading audio,
+- `prod_repo.py`: cloning the prod repo and finding articles by publication date,
 - `authors.py`: author slug to name and gender lookup and the authors file updater,
 - `cli.py`: the command line interface.
 
