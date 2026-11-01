@@ -73,7 +73,7 @@ class ElevenLabs(TextToSpeechSystem[ElevenLabsSpeechContext]):
     ) -> tuple[list[Audio], ElevenLabsSpeechContext]:
         sample_rate = 24000
         voice_id = self.config.voices[language]
-        request_ids: list[RequestId] = speech_context or []
+        request_ids: list[RequestId] = list(speech_context) if speech_context else []
         chunk_outputs: list[bytes] = []
         for i, chunk in enumerate(chunks):
             if len(chunk) > self.get_max_chunk_length(chunk):
