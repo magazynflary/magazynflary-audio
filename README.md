@@ -56,8 +56,13 @@ Anything else (other heading levels, lists, images, other shortcodes, …) makes
 
 Read all articles published in the prod repo within a date range (inclusive, by the front matter `date`;
 without `--since-date` or `--to-date` there is no limit on that side). Drafts are included unless
-`--skip-drafts` is given. It clones `magazynflary/prod` and saves one file per article, named after the
-article file, e.g. `out/samotni-wśród-ludzi.mp3`:
+`--skip-drafts` is given. It clones `magazynflary/prod` and saves one file per article, named
+`YYYY-MM-DD-slug.<format>`: the publication date (front matter `date`) followed by the article file name with Polish
+letters transliterated and any run of characters other than `a-z0-9` turned into `-`, e.g. the article
+`samotni-wśród-ludzi.md` dated 2026-05-07 is saved to `out/2026-05-07-samotni-wsrod-ludzi.mp3`. This is the naming
+convention of the audio server (audio.magazynflary.pl), which skips `.mp3` files named any other way. A corrected
+recording of an already published file must get a new name, e.g. with a `-v2` suffix
+(`2026-05-07-samotni-wsrod-ludzi-v2.mp3`), never replace the published file:
 
 ```sh
 uv run python -m magazynflary_audio read-prod-articles --since-date 2026-05-01 --to-date 2026-09-30 \
@@ -69,10 +74,12 @@ An article that cannot be read (invalid front matter, e.g. a missing `date` or a
 splits into a chunk too long for the TTS) is logged as an error and skipped. An article with invalid front matter counts
 as failed even if it might be outside the date range, since its date cannot be known.
 Any other error, e.g. ElevenLabs being unreachable, stops the run. An article whose output file already exists is not read again
-(and nothing is overwritten); it is logged as an error and counted as a separate kind of failure. At the end it logs how many articles were read fine and how
+(and nothing is overwritten); it is logged as an error and counted as a separate kind of failure. Two articles that
+would be saved under the same name (same date, file names equal after transliteration) are an error: the second one is
+not read. At the end it logs how many articles were read fine and how
 many failed, and exits with 1 if any failed.
 
-With `--dry-run` it only logs which articles would be read and which files they would be saved to, without
+With `--dry-run` it only logs which articles would be read and the file names they would be saved under, without
 calling ElevenLabs or writing anything. Existing output files and invalid front matter are reported as errors in a
 dry run too.
 
@@ -98,6 +105,7 @@ All code lives in `src/magazynflary_audio/`:
 - `elevenlabs.py`: ElevenLabs TTS client (with retries and request stitching for consistent intonation),
 - `audio.py`: helpers for concatenating, resampling and reading audio,
 - `prod_repo.py`: cloning the prod repo and finding articles by publication date,
+- `audio_naming.py`: names of the published audio files (`YYYY-MM-DD-slug.mp3`),
 - `authors.py`: author slug to name and gender lookup and the authors file updater,
 - `cli.py`: the command line interface.
 

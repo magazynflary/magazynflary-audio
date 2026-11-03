@@ -9,6 +9,7 @@ import soundfile
 
 from magazynflary_audio.article_parsing import ArticleParserImpl
 from magazynflary_audio.article_reading import ArticleReaderImpl
+from magazynflary_audio.audio_naming import audio_file_stem
 from magazynflary_audio.authors import UnknownAuthorError, get_author_info
 from magazynflary_audio.data import DATA_DIR
 from magazynflary_audio.elevenlabs import ElevenLabs
@@ -51,7 +52,9 @@ def main() -> None:
     read_prod_articles.add_argument("--skip-drafts", action="store_true", help="skip articles marked as drafts")
     read_prod_articles.add_argument("--tts-cache", action="store_true", help="use TTS cache")
     read_prod_articles.add_argument(
-        "--dry-run", action="store_true", help="only log which articles would be read and where they would be saved"
+        "--dry-run",
+        action="store_true",
+        help="only log which articles would be read and the file names they would be saved under",
     )
 
     args = parser.parse_args()
@@ -113,8 +116,13 @@ def _read_prod_articles(
 ) -> None:
     with clone_prod_repo() as repo_dir:
         found = find_articles(repo_dir, since_date=since_date, to_date=to_date, skip_drafts=skip_drafts)
-        LOG.info("Found %d articles from %s to %s", len(found.paths), since_date or "the beginning", to_date or "now")
-        markdowns = {path.stem: path.read_text(encoding="utf-8") for path in found.paths}
+        LOG.info(
+            "Found %d articles from %s to %s", len(found.articles), since_date or "the beginning", to_date or "now"
+        )
+        articles = [
+            (article.path.stem, article.publication_date, article.path.read_text(encoding="utf-8"))
+            for article in found.articles
+        ]
 
     article_parser = ArticleParserImpl()
     reader = None if dry_run else ArticleReaderImpl(tts=ElevenLabs.from_env(), tts_cache_enabled=tts_cache)
@@ -126,8 +134,24 @@ def _read_prod_articles(
     for path, error in found.invalid.items():
         LOG.error("Failed to read front matter of article %s: %s", path.stem, error)
         failed += 1
-    for stem, markdown in markdowns.items():
-        output_path = output_dir / f"{stem}.{output_format}"
+    output_paths: dict[Path, str] = {}
+    for stem, publication_date, markdown in articles:
+        try:
+            output_path = output_dir / f"{audio_file_stem(publication_date, stem)}.{output_format}"
+        except ValueError as e:
+            LOG.error("Failed to name the output file of article %s: %s", stem, e)
+            failed += 1
+            continue
+        if output_path in output_paths:
+            LOG.error(
+                "Article %s would be saved to %s, the same file as article %s, not reading it",
+                stem,
+                output_path,
+                output_paths[output_path],
+            )
+            failed += 1
+            continue
+        output_paths[output_path] = stem
         if output_path.exists():
             LOG.error("Output file %s already exists, not reading article %s", output_path, stem)
             output_exists += 1
