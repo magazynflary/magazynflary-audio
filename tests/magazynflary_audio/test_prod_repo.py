@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from magazynflary_audio.prod_repo import PROD_REPO_ARTICLES_SUBDIR, find_articles
+from magazynflary_audio.prod_repo import PROD_REPO_ARTICLES_SUBDIR, FoundArticle, find_articles
 
 
 def _write_article(repo_dir: Path, stem: str, front_matter: str) -> Path:
@@ -25,41 +25,49 @@ def repo_dir(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _stems(paths: list[Path]) -> list[str]:
-    return [path.stem for path in paths]
+def _stems(articles: list[FoundArticle]) -> list[str]:
+    return [article.path.stem for article in articles]
 
 
 def test_find_articles_unbounded_sorted_by_date(repo_dir: Path) -> None:
     found = find_articles(repo_dir, since_date=None, to_date=None, skip_drafts=False)
-    assert _stems(found.paths) == ["b-oldest", "c-middle", "d-draft", "e-not-draft", "a-newest"]
+    assert _stems(found.articles) == ["b-oldest", "c-middle", "d-draft", "e-not-draft", "a-newest"]
     assert found.invalid == {}
+
+
+def test_find_articles_publication_dates_drop_the_time_of_day(repo_dir: Path) -> None:
+    found = find_articles(repo_dir, since_date=None, to_date=datetime.date(2024, 2, 1), skip_drafts=False)
+    assert [article.publication_date for article in found.articles] == [
+        datetime.date(2024, 1, 1),
+        datetime.date(2024, 2, 1),
+    ]
 
 
 def test_find_articles_skip_drafts(repo_dir: Path) -> None:
     found = find_articles(repo_dir, since_date=None, to_date=None, skip_drafts=True)
-    assert _stems(found.paths) == ["b-oldest", "c-middle", "e-not-draft", "a-newest"]
+    assert _stems(found.articles) == ["b-oldest", "c-middle", "e-not-draft", "a-newest"]
 
 
 def test_find_articles_bounds_are_inclusive(repo_dir: Path) -> None:
     found = find_articles(
         repo_dir, since_date=datetime.date(2024, 2, 1), to_date=datetime.date(2024, 2, 20), skip_drafts=False
     )
-    assert _stems(found.paths) == ["c-middle", "d-draft", "e-not-draft"]
+    assert _stems(found.articles) == ["c-middle", "d-draft", "e-not-draft"]
 
 
 def test_find_articles_only_since_date(repo_dir: Path) -> None:
     found = find_articles(repo_dir, since_date=datetime.date(2024, 2, 16), to_date=None, skip_drafts=False)
-    assert _stems(found.paths) == ["e-not-draft", "a-newest"]
+    assert _stems(found.articles) == ["e-not-draft", "a-newest"]
 
 
 def test_find_articles_only_to_date(repo_dir: Path) -> None:
     found = find_articles(repo_dir, since_date=None, to_date=datetime.date(2024, 1, 31), skip_drafts=False)
-    assert _stems(found.paths) == ["b-oldest"]
+    assert _stems(found.articles) == ["b-oldest"]
 
 
 def test_find_articles_empty_repo(tmp_path: Path) -> None:
     found = find_articles(tmp_path, since_date=None, to_date=None, skip_drafts=False)
-    assert found.paths == []
+    assert found.articles == []
     assert found.invalid == {}
 
 
@@ -83,8 +91,8 @@ def test_find_articles_invalid_front_matter_does_not_stop_search(
 
     found = find_articles(repo_dir, since_date=None, to_date=None, skip_drafts=skip_drafts)
 
-    assert "bad" not in _stems(found.paths)
-    assert "a-newest" in _stems(found.paths)
+    assert "bad" not in _stems(found.articles)
+    assert "a-newest" in _stems(found.articles)
     assert list(found.invalid) == [bad_path]
     assert error_match in str(found.invalid[bad_path])
 
@@ -95,7 +103,7 @@ def test_find_articles_invalid_front_matter_reported_regardless_of_date_range(re
 
     found = find_articles(repo_dir, since_date=datetime.date(2030, 1, 1), to_date=None, skip_drafts=False)
 
-    assert found.paths == []
+    assert found.articles == []
     assert list(found.invalid) == [bad_path]
 
 

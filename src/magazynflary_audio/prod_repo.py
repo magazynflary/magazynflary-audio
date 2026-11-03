@@ -12,7 +12,14 @@ from pathlib import Path
 from magazynflary_audio.markdown_frontmatter import split_front_matter
 from magazynflary_audio.types import ParserError
 
-__all__ = ("PROD_REPO_ARTICLES_SUBDIR", "PROD_REPO_AUTHORS_SUBDIR", "FoundArticles", "clone_prod_repo", "find_articles")
+__all__ = (
+    "PROD_REPO_ARTICLES_SUBDIR",
+    "PROD_REPO_AUTHORS_SUBDIR",
+    "FoundArticle",
+    "FoundArticles",
+    "clone_prod_repo",
+    "find_articles",
+)
 
 LOG = logging.getLogger(__name__)
 
@@ -31,8 +38,15 @@ def clone_prod_repo() -> Iterator[Path]:
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
+class FoundArticle:
+    path: Path
+    publication_date: datetime.date
+    """Front matter `date`, without the time of day"""
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
 class FoundArticles:
-    paths: list[Path]
+    articles: list[FoundArticle]
     """Articles with a publication date in the requested range, oldest first"""
 
     invalid: dict[Path, ParserError]
@@ -61,7 +75,9 @@ def find_articles(
             continue
         if (since_date is None or since_date <= date) and (to_date is None or date <= to_date):
             found.append((date, path))
-    return FoundArticles(paths=[path for _, path in sorted(found)], invalid=invalid)
+    return FoundArticles(
+        articles=[FoundArticle(path=path, publication_date=date) for date, path in sorted(found)], invalid=invalid
+    )
 
 
 def _is_draft(value: object) -> bool:
