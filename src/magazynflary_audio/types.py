@@ -39,7 +39,10 @@ class ArticleParser(typing.Protocol):
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class Audio:
-    """Audio with float samples in the range [-1, 1]"""
+    """Audio with float samples in the range [-1, 1]
+
+    Mono samples have shape (n_samples,); multichannel samples have shape (n_samples, n_channels).
+    """
 
     samples: npt.NDArray[np.float32]
     sample_rate: int

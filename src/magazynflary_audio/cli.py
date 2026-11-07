@@ -9,6 +9,7 @@ import soundfile
 
 from magazynflary_audio.article_parsing import ArticleParserImpl
 from magazynflary_audio.article_reading import ArticleReaderImpl
+from magazynflary_audio.audio import get_channel_count
 from magazynflary_audio.authors import UnknownAuthorError, get_author_info
 from magazynflary_audio.data import DATA_DIR
 from magazynflary_audio.elevenlabs import ElevenLabs
@@ -180,7 +181,13 @@ def _paplay(audio: Audio) -> None:
     """Plays through the sound server (PulseAudio or PipeWire), on the default output, resampling as needed"""
     LOG.info("Playing")
     subprocess.run(
-        ["paplay", "--raw", "--format=float32le", f"--rate={audio.sample_rate}", "--channels=1"],
+        [
+            "paplay",
+            "--raw",
+            "--format=float32le",
+            f"--rate={audio.sample_rate}",
+            f"--channels={get_channel_count(audio)}",
+        ],
         input=audio.samples.astype("<f4", copy=False).tobytes(),
         check=True,
     )

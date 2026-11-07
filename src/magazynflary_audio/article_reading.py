@@ -9,10 +9,14 @@ from magazynflary_audio.types import ArticleReader, Audio, AuthorInfo, Language,
 __all__ = ("ArticleReaderImpl",)
 
 
+DEFAULT_TARGET_LOUDNESS: float = -14.0
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class ArticleReaderImpl[SpeechContext](ArticleReader):
     tts: TextToSpeechSystem[SpeechContext]
     tts_cache_enabled: bool
+    target_loudness: float = DEFAULT_TARGET_LOUDNESS
 
     def read_article(self, article: ParsedArticle, *, language: Language, author_info: AuthorInfo) -> Audio:
         gendered_author = "Autorka" if author_info.is_female else "Autor"
@@ -42,28 +46,45 @@ class ArticleReaderImpl[SpeechContext](ArticleReader):
                 speech_context=speech_context,
             )
             audio_per_section.append(audio.concat(section_audio))
-        intersection_pause = audio.silence(sample_rate, duration_seconds=0.5)
-        content_audio = audio.concat(list(itertools.chain(*[[a, intersection_pause] for a in audio_per_section]))[:-1])
 
-        return audio.concat(
+        intersection_pause = audio.mono_silence(sample_rate, duration_seconds=0.5)
+        content_audio = audio.concat(list(itertools.chain(*[[a, intersection_pause] for a in audio_per_section]))[:-1])
+        raw_parts: dict[str, Audio] = {
+            "brand": audio.read_mp3(DATA_DIR / "jingle/v0/magazyn-flary.mp3"),
+            "jingle": audio.read_mp3(DATA_DIR / "jingle/v1/flary_v2_wiecej-flar.mpeg"),
+            "title": title_audio,
+            "author": author_audio,
+            "pause": intersection_pause,
+            "content": content_audio,
+        }
+        normalized_parts = {
+            name: normalize_audio(
+                a,
+                sample_rate=sample_rate,
+                target_loudness=self.target_loudness,
+                max_silently_clipped_fraction=0.001,
+            )
+            for name, a in raw_parts.items()
+        }
+        full_audio = audio.concat(
             [
-                audio.resample(
-                    audio.read_mp3(DATA_DIR / "jingle" / "v0" / "magazyn-flary-jingle.mp3"),
-                    sample_rate=sample_rate,
-                ),
-                intersection_pause,
-                title_audio,
-                intersection_pause,
-                author_audio,
-                intersection_pause,
-                content_audio,
-                intersection_pause,
-                audio.resample(
-                    audio.read_mp3(DATA_DIR / "jingle" / "v0" / "jingle-magazyn-flary.mp3"),
-                    sample_rate=sample_rate,
-                ),
+                normalized_parts[k]
+                for k in [
+                    "brand",
+                    "jingle",
+                    "pause",
+                    "title",
+                    "pause",
+                    "author",
+                    "pause",
+                    "content",
+                    "pause",
+                    "jingle",
+                    "brand",
+                ]
             ]
         )
+        return full_audio
 
     def _text_to_speech(
         self,
@@ -119,3 +140,21 @@ def chunks_from_paragraphs(
             current_chunk = extended_chunk
     chunks.append(current_chunk)
     return chunks
+
+
+def normalize_audio(
+    a: Audio,
+    *,
+    sample_rate: int,
+    target_loudness: float,
+    max_silently_clipped_fraction: float,
+) -> Audio:
+    r = a
+    r = audio.resample(r, sample_rate)
+    r = audio.ensure_stereo(r)
+    r = audio.normalize_loudness(
+        r,
+        target_loudness=target_loudness,
+        max_silently_clipped_fraction=max_silently_clipped_fraction,
+    )
+    return r
