@@ -63,6 +63,8 @@ class ArticleReaderImpl[SpeechContext](ArticleReader):
         full_audio = compose(
             sample_rate=sample_rate,
             target_loudness=self.target_loudness,
+            max_silently_clipped_fraction=0.001,
+            max_true_peak=1,
             intersection_pause=intersection_pause,
             brand_audio=audio.read_mp3(DATA_DIR / "jingle/v0/magazyn-flary.mp3"),
             jingle_audio=audio.read_mp3(DATA_DIR / "jingle/v1/flary_v2_wiecej-flar.mpeg"),
@@ -140,6 +142,8 @@ def compose(
     *,
     sample_rate: int,
     target_loudness: float,
+    max_silently_clipped_fraction: float,
+    max_true_peak: float,
     intersection_pause: Audio,
     brand_audio: Audio,
     jingle_audio: Audio,
@@ -160,8 +164,8 @@ def compose(
             a,
             sample_rate=sample_rate,
             target_loudness=target_loudness,
-            max_silently_clipped_fraction=0.001,
-            max_true_peak=1,
+            max_silently_clipped_fraction=max_silently_clipped_fraction,
+            max_true_peak=max_true_peak,
         )
         for name, a in raw_parts.items()
     }
