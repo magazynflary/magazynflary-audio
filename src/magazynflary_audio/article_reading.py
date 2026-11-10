@@ -1,11 +1,20 @@
 import dataclasses
 import itertools
 import logging
+import re
 import typing
 
 from magazynflary_audio import audio
 from magazynflary_audio.data import DATA_DIR, cache
-from magazynflary_audio.types import ArticleReader, Audio, AuthorInfo, Language, ParsedArticle, TextToSpeechSystem
+from magazynflary_audio.types import (
+    ArticleReader,
+    Audio,
+    AuthorInfo,
+    Language,
+    ParsedArticle,
+    ParsedArticleSection,
+    TextToSpeechSystem,
+)
 
 __all__ = ("ArticleReaderImpl",)
 
@@ -34,7 +43,7 @@ class ArticleReaderImpl[SpeechContext](ArticleReader):
         chunks_per_section: list[list[str]] = []
         if article.intro_paragraphs:
             chunks_per_section.append(chunks_from_paragraphs(article.intro_paragraphs, text_to_speech=self.tts))
-        for section in article.sections:
+        for section in filter_out_bibliography(article.sections):
             raw_header = section.header.strip()
             header_with_sentence_ending = raw_header if raw_header[-1] in ".?!" else raw_header + "."  # for TTS
             chunks_per_section.append(
@@ -99,6 +108,14 @@ def _cached_text_to_speech[SpeechContext](
     the cache. So editing a section re-synthesizes that section and the ones after it, but not the ones before.
     """
     return tts.text_to_speech(chunks, language=language, speech_context=speech_context)
+
+
+def filter_out_bibliography(sections: list[ParsedArticleSection]) -> typing.Generator[ParsedArticleSection]:
+    for i, section in enumerate(sections):
+        if i == len(sections) - 1 and re.match(r"bibliografia:?", section.header.strip().lower()):
+            LOG.warning("Article has bibliography section at the end, skipping")
+            continue
+        yield section
 
 
 def chunks_from_paragraphs(

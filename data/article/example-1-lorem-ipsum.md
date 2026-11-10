@@ -42,3 +42,8 @@ Jako użytkownicy zostaliśmy tak do tego przyzwyczajeni, że nie tylko nas to n
 
 Lorem Ipsum czasem pozwala zredukować wysiłek tworzenia przykładowych tekstów. Szkoda, że nie ma polskiej wersji przydatnej do testowania rozwiązań **text-to-speech** (TTS) w języku polskim.
 
+
+## Bibliografia
+
+**Žižek, S.** (1994). *Mapping Ideology*. Verso.
+

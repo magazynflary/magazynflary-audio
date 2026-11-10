@@ -3,8 +3,8 @@ import typing
 
 import pytest
 
-from magazynflary_audio.article_reading import chunks_from_paragraphs
-from magazynflary_audio.types import Audio, Language, TextToSpeechSystem
+from magazynflary_audio.article_reading import chunks_from_paragraphs, filter_out_bibliography
+from magazynflary_audio.types import Audio, Language, ParsedArticleSection, TextToSpeechSystem
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -112,3 +112,36 @@ def test_chunks_from_paragraphs_preserves_text(test_case: ChunkingTestCase) -> N
     expected_parts = ([test_case.header] if test_case.header else []) + test_case.paragraphs
     assert "\n\n".join(chunks) == "\n\n".join(expected_parts)
     assert all(len(chunk) <= test_case.max_chunk_length for chunk in chunks)
+
+
+def _section(header: str) -> ParsedArticleSection:
+    return ParsedArticleSection(header=header, paragraphs=["Lorem ipsum."])
+
+
+@pytest.mark.parametrize(
+    "header",
+    ["Bibliografia", "Bibliografia:", "bibliografia", "BIBLIOGRAFIA:", "  Bibliografia:  "],
+)
+def test_filter_out_bibliography_removes_last_section(header: str) -> None:
+    sections = [_section("Wstęp"), _section("Rozwinięcie"), _section(header)]
+    assert list(filter_out_bibliography(sections)) == sections[:2]
+
+
+@pytest.mark.parametrize("header", ["Bibliografia", "Bibliografia:"])
+def test_filter_out_bibliography_keeps_bibliography_not_at_end(header: str) -> None:
+    sections = [_section("Wstęp"), _section(header), _section("Zakończenie")]
+    assert list(filter_out_bibliography(sections)) == sections
+
+
+def test_filter_out_bibliography_keeps_other_last_section() -> None:
+    sections = [_section("Wstęp"), _section("Zakończenie")]
+    assert list(filter_out_bibliography(sections)) == sections
+
+
+@pytest.mark.parametrize("header", ["Bibliografia", "Bibliografia:"])
+def test_filter_out_bibliography_only_section(header: str) -> None:
+    assert list(filter_out_bibliography([_section(header)])) == []
+
+
+def test_filter_out_bibliography_empty() -> None:
+    assert list(filter_out_bibliography([])) == []
