@@ -1,6 +1,5 @@
 import logging
 import math
-import warnings
 from pathlib import Path
 
 import numpy as np
@@ -84,37 +83,65 @@ def measure_loudness(audio: Audio) -> float:
     return float(pyloudnorm.Meter(audio.sample_rate).integrated_loudness(audio.samples))
 
 
+def true_peak_dbfs(samples: np.ndarray, oversample: int = 4) -> float:
+    """Approximates true peak (ITU-R BS.1770 Annex 2) in dBFS via 4x oversampling.
+
+    Inter-sample peaks can exceed the highest sample value, and they are what
+    clips after lossy encoding, so they are checked instead of raw sample peaks.
+    """
+    upsampled = scipy.signal.resample_poly(samples, oversample, 1, axis=0)
+    peak = float(np.max(np.abs(upsampled)))
+    return 20.0 * math.log10(peak) if peak > 0 else -math.inf
+
+
 def normalize_loudness(
     audio: Audio,
     *,
     target_loudness: float,
+    max_true_peak: float = -1,
     max_silently_clipped_fraction: float = 0,
 ) -> Audio:
-    """Scales audio to a target integrated loudness (ITU-R BS.1770)
+    """Scales audio toward a target integrated loudness (ITU-R BS.1770) without clipping.
 
-    Audio is scaled to target_loudness (LUFS). Peaks that would exceed [-1, 1] are hard-clipped, and a warning
-    is logged if more than max_silently_clipped_fraction of the samples are clipped (by default, any
-    clipping is logged). Silent audio is returned unchanged.
+    One constant gain is applied: the gain needed to reach target_loudness (LUFS),
+    capped so the true peak stays at or below max_true_peak (dBTP). When the cap
+    applies, the result is quieter than the target; this matches how Spotify treats
+    quiet, dynamic masters, so no limiter or clipping is involved.
+
+    If the input's true peak already exceeds max_true_peak, the gain is negative,
+    so the audio may come out quieter than it went in.
+
+    Hard clipping to [-1, 1] remains only as a safety net and logs a warning if
+    more than max_silently_clipped_fraction of samples are affected.
+    Silent audio is returned unchanged.
     Raises ValueError if any audio is shorter than 400 ms.
     """
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message="Possible clipped samples in output", category=UserWarning)
-        input_loudness = measure_loudness(audio)
-        if not math.isfinite(input_loudness):
-            return audio
-        samples = pyloudnorm.normalize.loudness(
-            data=audio.samples,
-            input_loudness=input_loudness,
-            target_loudness=target_loudness,
+    input_loudness = measure_loudness(audio)
+    if not math.isfinite(input_loudness):
+        return audio
+
+    wanted_gain_db = target_loudness - input_loudness
+    allowed_gain_db = max_true_peak - true_peak_dbfs(audio.samples)
+    gain_db = min(wanted_gain_db, allowed_gain_db)
+
+    if gain_db < wanted_gain_db:
+        LOG.info(
+            "Gain capped by true peak: reaching %.1f LUFS instead of %.1f LUFS",
+            input_loudness + gain_db,
+            target_loudness,
         )
-        clipped_fraction = float(np.mean(np.abs(samples) > 1.0))
-        if clipped_fraction > max_silently_clipped_fraction:
-            LOG.warning(
-                "Loudness normalization of audio to %s LUFS clipped %.2f%% of samples",
-                target_loudness,
-                clipped_fraction * 100,
-            )
-        return Audio(
-            samples=np.clip(samples, -1.0, 1.0).astype(np.float32, copy=False),
-            sample_rate=audio.sample_rate,
+
+    samples = audio.samples * (10.0 ** (gain_db / 20.0))
+
+    clipped_fraction = float(np.mean(np.abs(samples) > 1.0))
+    if clipped_fraction > max_silently_clipped_fraction:
+        LOG.warning(
+            "Loudness normalization of audio to %s LUFS clipped %.2f%% of samples",
+            target_loudness,
+            clipped_fraction * 100,
         )
+
+    return Audio(
+        samples=np.clip(samples, -1.0, 1.0).astype(np.float32, copy=False),
+        sample_rate=audio.sample_rate,
+    )

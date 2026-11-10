@@ -1,5 +1,6 @@
 import dataclasses
 import itertools
+import logging
 import typing
 
 from magazynflary_audio import audio
@@ -8,8 +9,9 @@ from magazynflary_audio.types import ArticleReader, Audio, AuthorInfo, Language,
 
 __all__ = ("ArticleReaderImpl",)
 
+LOG = logging.getLogger(__name__)
 
-DEFAULT_TARGET_LOUDNESS: float = -14.0
+DEFAULT_TARGET_LOUDNESS: float = -16.0
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -49,40 +51,15 @@ class ArticleReaderImpl[SpeechContext](ArticleReader):
 
         intersection_pause = audio.mono_silence(sample_rate, duration_seconds=0.5)
         content_audio = audio.concat(list(itertools.chain(*[[a, intersection_pause] for a in audio_per_section]))[:-1])
-        raw_parts: dict[str, Audio] = {
-            "brand": audio.read_mp3(DATA_DIR / "jingle/v0/magazyn-flary.mp3"),
-            "jingle": audio.read_mp3(DATA_DIR / "jingle/v1/flary_v2_wiecej-flar.mpeg"),
-            "title": title_audio,
-            "author": author_audio,
-            "pause": intersection_pause,
-            "content": content_audio,
-        }
-        normalized_parts = {
-            name: normalize_audio(
-                a,
-                sample_rate=sample_rate,
-                target_loudness=self.target_loudness,
-                max_silently_clipped_fraction=0.001,
-            )
-            for name, a in raw_parts.items()
-        }
-        full_audio = audio.concat(
-            [
-                normalized_parts[k]
-                for k in [
-                    "brand",
-                    "jingle",
-                    "pause",
-                    "title",
-                    "pause",
-                    "author",
-                    "pause",
-                    "content",
-                    "pause",
-                    "jingle",
-                    "brand",
-                ]
-            ]
+        full_audio = compose(
+            sample_rate=sample_rate,
+            target_loudness=self.target_loudness,
+            intersection_pause=intersection_pause,
+            brand_audio=audio.read_mp3(DATA_DIR / "jingle/v0/magazyn-flary.mp3"),
+            jingle_audio=audio.read_mp3(DATA_DIR / "jingle/v1/flary_v2_wiecej-flar.mpeg"),
+            title_audio=title_audio,
+            author_audio=author_audio,
+            content_audio=content_audio,
         )
         return full_audio
 
@@ -142,12 +119,63 @@ def chunks_from_paragraphs(
     return chunks
 
 
+def compose(
+    *,
+    sample_rate: int,
+    target_loudness: float,
+    intersection_pause: Audio,
+    brand_audio: Audio,
+    jingle_audio: Audio,
+    title_audio: Audio,
+    author_audio: Audio,
+    content_audio: Audio,
+) -> Audio:
+    raw_parts: dict[str, Audio] = {
+        "brand": brand_audio,
+        "jingle": jingle_audio,
+        "title": title_audio,
+        "author": author_audio,
+        "pause": intersection_pause,
+        "content": content_audio,
+    }
+    normalized_parts = {
+        name: normalize_audio(
+            a,
+            sample_rate=sample_rate,
+            target_loudness=target_loudness,
+            max_silently_clipped_fraction=0.001,
+            max_true_peak=1,
+        )
+        for name, a in raw_parts.items()
+    }
+    full_audio = audio.concat(
+        [
+            normalized_parts[k]
+            for k in [
+                "brand",
+                "jingle",
+                "pause",
+                "title",
+                "pause",
+                "author",
+                "pause",
+                "content",
+                "pause",
+                "jingle",
+                "brand",
+            ]
+        ]
+    )
+    return full_audio
+
+
 def normalize_audio(
     a: Audio,
     *,
     sample_rate: int,
     target_loudness: float,
     max_silently_clipped_fraction: float,
+    max_true_peak: float,
 ) -> Audio:
     r = a
     r = audio.resample(r, sample_rate)
@@ -156,5 +184,6 @@ def normalize_audio(
         r,
         target_loudness=target_loudness,
         max_silently_clipped_fraction=max_silently_clipped_fraction,
+        max_true_peak=max_true_peak,
     )
     return r
