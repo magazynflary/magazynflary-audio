@@ -61,44 +61,6 @@ def overlay(base: Audio, top: Audio, *, offset_seconds: float) -> Audio:
     return Audio(samples=samples, sample_rate=base.sample_rate)
 
 
-def duck(audio: Audio, *, start_seconds: float, end_seconds: float, gain_db: float, ramp_seconds: float) -> Audio:
-    """Lowers audio by gain_db (negative) between start_seconds and end_seconds, e.g. music under a voice
-
-    The gain ramps linearly (in amplitude) over ramp_seconds: down so that it is fully lowered at start_seconds, and
-    back up after end_seconds.
-    """
-    assert gain_db <= 0 and ramp_seconds >= 0 and end_seconds >= start_seconds
-    n = len(audio.samples)
-    t = np.arange(n, dtype=np.float64) / audio.sample_rate
-    low = 10.0 ** (gain_db / 20.0)
-    if ramp_seconds > 0:
-        down = np.clip((start_seconds - t) / ramp_seconds, 0.0, 1.0)  # 1 before the ramp, 0 from start_seconds on
-        up = np.clip((t - end_seconds) / ramp_seconds, 0.0, 1.0)  # 0 until end_seconds, 1 after the ramp
-        weight = np.maximum(down, up)
-    else:
-        weight = ((t < start_seconds) | (t > end_seconds)).astype(np.float64)
-    envelope = low + (1.0 - low) * weight
-    return _apply_envelope(audio, envelope)
-
-
-def fade_out_and_cut(audio: Audio, *, end_seconds: float, fade_seconds: float) -> Audio:
-    """Fades audio out linearly over the fade_seconds before end_seconds and cuts it there
-
-    Audio already shorter than end_seconds is faded over the same window as far as it reaches.
-    """
-    assert fade_seconds > 0 and end_seconds >= fade_seconds
-    cut = audio.samples[: seconds_to_samples(audio, end_seconds)]
-    t = np.arange(len(cut), dtype=np.float64) / audio.sample_rate
-    envelope = np.clip((end_seconds - t) / fade_seconds, 0.0, 1.0)
-    return _apply_envelope(Audio(samples=cut, sample_rate=audio.sample_rate), envelope)
-
-
-def _apply_envelope(audio: Audio, envelope: np.ndarray) -> Audio:
-    if audio.samples.ndim == 2:
-        envelope = envelope[:, None]
-    return Audio(samples=(audio.samples * envelope).astype(np.float32, copy=False), sample_rate=audio.sample_rate)
-
-
 def get_channel_count(audio: Audio) -> int:
     """Returns the number of channels: 1 for samples of shape (n_samples,), n_channels for (n_samples, n_channels)"""
     match audio.samples.ndim:
