@@ -226,6 +226,7 @@ def _compose(jingle_seconds: float, mix: JingleMix) -> Audio:
         sample_rate=OUTPUT_SAMPLE_RATE,
         target_loudness=-16.0,
         max_true_peak=MAX_TRUE_PEAK,
+        max_limiting_db=3.0,
         max_silently_clipped_fraction=0.001,
         mix=mix,
         jingle_audio=_tone(jingle_seconds, sample_rate=44100, frequency=440.0, channels=2),

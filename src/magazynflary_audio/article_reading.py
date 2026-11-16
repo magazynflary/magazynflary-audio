@@ -27,6 +27,11 @@ DEFAULT_TARGET_LOUDNESS: float = -16.0
 MAX_TRUE_PEAK: float = -1.0
 """dBTP; headroom for the inter-sample peaks that MP3 encoding adds"""
 
+SPEECH_MAX_LIMITING_DB: float = 3.0
+"""How far the limiter may bring down the voice's rare peaks (plosives) to reach the target loudness. ElevenLabs speech
+peaks 14-18 dB over its loudness, so with the gain alone a whole article lands at -17 to -19 LUFS, decided by its single
+highest peak. The jingle is never limited."""
+
 OUTPUT_SAMPLE_RATE = 44100
 """The TTS voice (24 kHz) is resampled up; the jingle keeps its full band"""
 
@@ -97,6 +102,7 @@ class ArticleReaderImpl[SpeechContext](ArticleReader):
             sample_rate=OUTPUT_SAMPLE_RATE,
             target_loudness=self.target_loudness,
             max_true_peak=MAX_TRUE_PEAK,
+            max_limiting_db=SPEECH_MAX_LIMITING_DB,
             max_silently_clipped_fraction=0.001,
             mix=self.jingle_mix,
             jingle_audio=audio.read_audio(self.jingle_mix.path),
@@ -176,6 +182,7 @@ def compose(
     sample_rate: int,
     target_loudness: float,
     max_true_peak: float,
+    max_limiting_db: float,
     max_silently_clipped_fraction: float,
     mix: JingleMix,
     jingle_audio: Audio,
@@ -192,9 +199,9 @@ def compose(
     article sections with pauses between
     outro   jingle; over its tail: brand name; it ends when both have ended
 
-    Every part is normalized to target_loudness on its own (the jingle to target_loudness + mix.level_db), then the
-    whole recording once more - one constant gain, so the balance stays - to
-    meet target_loudness and max_true_peak after mixing.
+    Every part is normalized to target_loudness on its own - the voice parts with up to max_limiting_db of peak
+    limiting, the jingle to target_loudness + mix.level_db with the gain alone - then the whole recording once more
+    (one constant gain, so the balance stays) to meet target_loudness and max_true_peak after mixing.
     """
 
     def normalized(a: Audio) -> Audio:
@@ -204,6 +211,7 @@ def compose(
             target_loudness=target_loudness,
             max_silently_clipped_fraction=max_silently_clipped_fraction,
             max_true_peak=max_true_peak,
+            max_limiting_db=max_limiting_db,
         )
 
     pause = audio.silence(sample_rate, duration_seconds=mix.pause_seconds)
@@ -239,6 +247,7 @@ def normalize_audio(
     target_loudness: float,
     max_silently_clipped_fraction: float,
     max_true_peak: float,
+    max_limiting_db: float = 0,
 ) -> Audio:
     r = a
     r = audio.resample(r, sample_rate)
@@ -248,5 +257,6 @@ def normalize_audio(
         target_loudness=target_loudness,
         max_silently_clipped_fraction=max_silently_clipped_fraction,
         max_true_peak=max_true_peak,
+        max_limiting_db=max_limiting_db,
     )
     return r
