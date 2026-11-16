@@ -49,13 +49,8 @@ class JingleMix:
     voice_offset_seconds: float = 7.5
     """Where the voice starts: after the last note (6.5 s), in the decaying tail"""
     level_db: float = -3.0
-    """The jingle's loudness relative to the voice; piano attacks sound louder than speech of the same LUFS, and their
-    peaks would otherwise keep the whole recording under its target (the true peak limit)"""
-    duck_db: float = -6.0
-    """The jingle under the voice, further down from level_db"""
-    duck_ramp_seconds: float = 0.4
-    intro_fade_seconds: float = 1.5
-    """After the intro's voice the rest of the tail fades out over this long, then the article starts"""
+    """The jingle's loudness relative to the voice (a matter of balance: piano attacks sound louder than speech of the
+    same LUFS). The tail is quiet enough to stay under the voice as it is - no ducking, no fade."""
     pause_seconds: float = 0.5
     """Between the voice parts, between the article's sections, and around the article"""
 
@@ -192,12 +187,13 @@ def compose(
 ) -> Audio:
     """The whole recording, stereo at sample_rate:
 
-    intro   jingle; over its tail: brand name, title, author, disclosure (pauses between); the tail then fades out
+    intro   jingle; over its tail: brand name, title, author, disclosure (pauses between); then the article starts
+            when both the voice and the jingle have ended
     article sections with pauses between
-    outro   jingle; over its tail: brand name; the jingle rings out to its end
+    outro   jingle; over its tail: brand name; it ends when both have ended
 
-    Every part is normalized to target_loudness on its own (the jingle to target_loudness + mix.level_db, before it
-    is lowered under the voice), then the whole recording once more - one constant gain, so the balance stays - to
+    Every part is normalized to target_loudness on its own (the jingle to target_loudness + mix.level_db), then the
+    whole recording once more - one constant gain, so the balance stays - to
     meet target_loudness and max_true_peak after mixing.
     """
 
@@ -223,15 +219,9 @@ def compose(
     intro_voice = audio.concat(
         [brand, pause, normalized(title_audio), pause, normalized(author_audio), pause, normalized(disclosure_audio)]
     )
-    intro = _voice_over_jingle(jingle, intro_voice, mix=mix)
-    # A tail still ringing when the voice ends fades out right after it (never under the voice).
-    voice_end = mix.voice_offset_seconds + audio.duration_seconds(intro_voice)
-    intro_end = min(voice_end + mix.intro_fade_seconds, audio.duration_seconds(jingle))
-    if intro_end > voice_end:
-        intro = audio.fade_out_and_cut(intro, end_seconds=intro_end, fade_seconds=intro_end - voice_end)
-
+    intro = audio.overlay(jingle, intro_voice, offset_seconds=mix.voice_offset_seconds)
     article = audio.concat(list(itertools.chain(*[[normalized(a), pause] for a in section_audios]))[:-1])
-    outro = _voice_over_jingle(jingle, brand, mix=mix)
+    outro = audio.overlay(jingle, brand, offset_seconds=mix.voice_offset_seconds)
 
     full = audio.concat([intro, pause, article, pause, outro])
     return audio.normalize_loudness(
@@ -240,19 +230,6 @@ def compose(
         max_true_peak=max_true_peak,
         max_silently_clipped_fraction=max_silently_clipped_fraction,
     )
-
-
-def _voice_over_jingle(jingle: Audio, voice: Audio, *, mix: JingleMix) -> Audio:
-    """voice laid over jingle at mix.voice_offset_seconds, the jingle lowered by mix.duck_db while the voice lasts"""
-    start = mix.voice_offset_seconds
-    ducked = audio.duck(
-        jingle,
-        start_seconds=start,
-        end_seconds=start + audio.duration_seconds(voice),
-        gain_db=mix.duck_db,
-        ramp_seconds=mix.duck_ramp_seconds,
-    )
-    return audio.overlay(ducked, voice, offset_seconds=start)
 
 
 def normalize_audio(

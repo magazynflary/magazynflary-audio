@@ -6,9 +6,8 @@ wraps it in the magazine's piano jingle.
 
 Layout of a recording (`compose()` in `article_reading.py`, timing and levels in `JingleMix`):
 
-- intro: the jingle (`data/jingle/v2/fortepian.flac`, lossless master); over its decaying tail, with the jingle
-  lowered: "Magazyn Flary", the title, the author and "Czyta głos syntetyczny." ("Read by a synthetic voice."); what
-  is left of the tail then fades out,
+- intro: the jingle (`data/jingle/v2/fortepian.flac`, lossless master); over its decaying tail: "Magazyn Flary",
+  the title, the author and "Czyta głos syntetyczny." ("Read by a synthetic voice."),
 - the article, sections separated by pauses,
 - outro: the jingle again, "Magazyn Flary" over its tail, ringing out to its end.
 
@@ -118,7 +117,7 @@ All code lives in `src/magazynflary_audio/`:
 - `article_reading.py`: `ParsedArticle` to `Audio` – chunking text for TTS, the intro and outro over the jingle,
   pauses,
 - `elevenlabs.py`: ElevenLabs TTS client (with retries and request stitching for consistent intonation),
-- `audio.py`: helpers for reading, concatenating, resampling, mixing (overlay, ducking, fades) and loudness,
+- `audio.py`: helpers for reading, concatenating, resampling, overlaying audio and loudness,
 - `prod_repo.py`: cloning the prod repo and finding articles by publication date,
 - `audio_naming.py`: names of the published audio files (`YYYY-MM-DD-slug.mp3`),
 - `authors.py`: author slug to name and gender lookup and the authors file updater,
