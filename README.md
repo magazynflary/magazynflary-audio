@@ -2,11 +2,23 @@
 
 Turns [Magazyn Flary](https://github.com/magazynflary/prod) articles into audio. It parses an article's
 Hugo markdown, reads it out loud in Polish with [ElevenLabs](https://elevenlabs.io/) text-to-speech and
-wraps it in the magazine's jingles.
+wraps it in the magazine's piano jingle.
 
-Every recording starts with the title, the author and the sentence "Czyta głos syntetyczny." ("Read by a synthetic
-voice."): Apple Podcasts requires a synthetic voice to be disclosed in the audio itself. The podcast feed
-(`roles/audio_hosting` in the infrastructure repo) uses the same sentence in its descriptions; change both together.
+Layout of a recording (`compose()` in `article_reading.py`, timing and levels in `JingleMix`):
+
+- intro: the jingle (`data/jingle/v2/fortepian.flac`, lossless master); over its decaying tail, with the jingle
+  lowered: "Magazyn Flary", the title, the author and "Czyta głos syntetyczny." ("Read by a synthetic voice."); what
+  is left of the tail then fades out,
+- the article, sections separated by pauses,
+- outro: the jingle again, "Magazyn Flary" over its tail, ringing out to its end.
+
+"Magazyn Flary" is synthesized on its own, without the article's speech context, so it is the same audio in every
+episode. The disclosure sentence is required by Apple Podcasts in the audio itself; the podcast feed
+(`roles/audio_hosting` in the infrastructure repo) uses the same sentence in its descriptions - change both together.
+
+Output: 44.1 kHz stereo, each voice part and the whole recording normalized to -16 LUFS with true peaks at most
+-1 dBTP; `.mp3` at a constant 128 kbit/s (Apple Podcasts and Spotify recommend at least 128; constant, because apps
+derive duration and seek positions from the file size).
 
 ## Usage
 
@@ -103,9 +115,10 @@ All code lives in `src/magazynflary_audio/`:
 
 - `types.py`: data types and protocols (`ArticleParser`, `TextToSpeechSystem`, `ArticleReader`),
 - `article_parsing.py`: markdown to `ParsedArticle`,
-- `article_reading.py`: `ParsedArticle` to `Audio` – chunking text for TTS, adding jingles and pauses,
+- `article_reading.py`: `ParsedArticle` to `Audio` – chunking text for TTS, the intro and outro over the jingle,
+  pauses,
 - `elevenlabs.py`: ElevenLabs TTS client (with retries and request stitching for consistent intonation),
-- `audio.py`: helpers for concatenating, resampling and reading audio,
+- `audio.py`: helpers for reading, concatenating, resampling, mixing (overlay, ducking, fades) and loudness,
 - `prod_repo.py`: cloning the prod repo and finding articles by publication date,
 - `audio_naming.py`: names of the published audio files (`YYYY-MM-DD-slug.mp3`),
 - `authors.py`: author slug to name and gender lookup and the authors file updater,
