@@ -22,6 +22,10 @@ LOG = logging.getLogger(__name__)
 
 DEFAULT_TARGET_LOUDNESS: float = -16.0
 
+VOICE_DISCLOSURE = "Czyta głos syntetyczny."
+"""Read after the author in every recording: Apple Podcasts (guideline 1.11) requires disclosing a synthetic voice in
+the audio itself, not only in the feed. Keep it the same as the disclosure in the podcast feed's descriptions."""
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class ArticleReaderImpl[SpeechContext](ArticleReader):
@@ -31,10 +35,11 @@ class ArticleReaderImpl[SpeechContext](ArticleReader):
 
     def read_article(self, article: ParsedArticle, *, language: Language, author_info: AuthorInfo) -> Audio:
         gendered_author = "Autorka" if author_info.is_female else "Autor"
-        (title_audio, author_audio), speech_context = self._text_to_speech(
+        (title_audio, author_audio, disclosure_audio), speech_context = self._text_to_speech(
             chunks=[
                 f"Artykuł pod tytułem: {article.title}",
                 f"{gendered_author}: {author_info.name}",
+                VOICE_DISCLOSURE,
             ],
             language=language,
         )
@@ -70,6 +75,7 @@ class ArticleReaderImpl[SpeechContext](ArticleReader):
             jingle_audio=audio.read_mp3(DATA_DIR / "jingle/v1/flary_v2_wiecej-flar.mpeg"),
             title_audio=title_audio,
             author_audio=author_audio,
+            disclosure_audio=disclosure_audio,
             content_audio=content_audio,
         )
         return full_audio
@@ -149,6 +155,7 @@ def compose(
     jingle_audio: Audio,
     title_audio: Audio,
     author_audio: Audio,
+    disclosure_audio: Audio,
     content_audio: Audio,
 ) -> Audio:
     raw_parts: dict[str, Audio] = {
@@ -156,6 +163,7 @@ def compose(
         "jingle": jingle_audio,
         "title": title_audio,
         "author": author_audio,
+        "disclosure": disclosure_audio,
         "pause": intersection_pause,
         "content": content_audio,
     }
@@ -179,6 +187,8 @@ def compose(
                 "title",
                 "pause",
                 "author",
+                "pause",
+                "disclosure",
                 "pause",
                 "content",
                 "pause",
