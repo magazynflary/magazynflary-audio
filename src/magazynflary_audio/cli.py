@@ -23,6 +23,11 @@ LOG = logging.getLogger(__name__)
 
 OUTPUT_FORMATS = {".wav": "WAV", ".mp3": "MP3"}
 
+# MP3: constant 128 kbit/s (Apple Podcasts and Spotify recommend at least 128). Constant, not variable: podcast apps
+# and browser players derive the duration and seek positions from the file size. libsndfile takes a
+# compression_level instead of a bitrate; 0.66 gives 128 kbit/s at 44.1 kHz stereo (tests/test_cli.py checks it).
+MP3_OPTIONS = {"bitrate_mode": "CONSTANT", "compression_level": 0.66}
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Turns Magazyn Flary articles into audio")
@@ -213,7 +218,9 @@ def _group_by_output_path(
 
 
 def _save(audio: Audio, path: Path) -> None:
-    soundfile.write(path, data=audio.samples, samplerate=audio.sample_rate, format=OUTPUT_FORMATS[path.suffix.lower()])
+    output_format = OUTPUT_FORMATS[path.suffix.lower()]
+    options = MP3_OPTIONS if output_format == "MP3" else {}
+    soundfile.write(path, data=audio.samples, samplerate=audio.sample_rate, format=output_format, **options)
     LOG.info("Saved audio to %s", path)
 
 
