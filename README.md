@@ -4,6 +4,10 @@ Turns [Magazyn Flary](https://github.com/magazynflary/prod) articles into audio.
 Hugo markdown, reads it out loud in Polish with [ElevenLabs](https://elevenlabs.io/) text-to-speech and
 wraps it in the magazine's jingles.
 
+Every recording starts with the title, the author and the sentence "Czyta głos syntetyczny." ("Read by a synthetic
+voice."): Apple Podcasts requires a synthetic voice to be disclosed in the audio itself. The podcast feed
+(`roles/audio_hosting` in the infrastructure repo) uses the same sentence in its descriptions; change both together.
+
 ## Usage
 
 Requires [uv](https://docs.astral.sh/uv/). Install dependencies:

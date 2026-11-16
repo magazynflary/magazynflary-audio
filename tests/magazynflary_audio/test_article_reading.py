@@ -1,10 +1,23 @@
 import dataclasses
 import typing
 
+import numpy as np
 import pytest
 
-from magazynflary_audio.article_reading import chunks_from_paragraphs, filter_out_bibliography
-from magazynflary_audio.types import Audio, Language, ParsedArticleSection, TextToSpeechSystem
+from magazynflary_audio.article_reading import (
+    VOICE_DISCLOSURE,
+    ArticleReaderImpl,
+    chunks_from_paragraphs,
+    filter_out_bibliography,
+)
+from magazynflary_audio.types import (
+    Audio,
+    AuthorInfo,
+    Language,
+    ParsedArticle,
+    ParsedArticleSection,
+    TextToSpeechSystem,
+)
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -145,3 +158,44 @@ def test_filter_out_bibliography_only_section(header: str) -> None:
 
 def test_filter_out_bibliography_empty() -> None:
     assert list(filter_out_bibliography([])) == []
+
+
+@dataclasses.dataclass
+class RecordingTextToSpeech(TextToSpeechSystem[None]):
+    """Returns one second of a quiet tone per chunk and records the chunks of every call"""
+
+    calls: list[list[str]] = dataclasses.field(default_factory=list)
+    sample_rate: int = 24000
+
+    def cache_key(self) -> str:
+        return "RecordingTextToSpeech()"
+
+    def get_max_chunk_length(self, chunk: str) -> int:
+        return 4000
+
+    def text_to_speech(
+        self,
+        chunks: list[str],
+        *,
+        language: Language,
+        speech_context: None = None,
+    ) -> tuple[list[Audio], None]:
+        self.calls.append(list(chunks))
+        t = np.arange(self.sample_rate, dtype=np.float32) / self.sample_rate
+        tone = (0.1 * np.sin(2 * np.pi * 220 * t)).astype(np.float32)
+        return [Audio(samples=tone, sample_rate=self.sample_rate) for _ in chunks], None
+
+
+def test_read_article_discloses_synthetic_voice_after_author() -> None:
+    tts = RecordingTextToSpeech()
+    article = ParsedArticle(
+        author_slug="zaneta-zulawska",
+        title="Tytuł",
+        intro_paragraphs=["Wstęp."],
+        sections=[ParsedArticleSection(header="Sekcja", paragraphs=["Treść."])],
+    )
+    ArticleReaderImpl(tts=tts, tts_cache_enabled=False).read_article(
+        article, language="pl", author_info=AuthorInfo(name="Żaneta Żuławska", is_female=True)
+    )
+    assert tts.calls[0] == ["Artykuł pod tytułem: Tytuł", "Autorka: Żaneta Żuławska", VOICE_DISCLOSURE]
+    assert VOICE_DISCLOSURE == "Czyta głos syntetyczny."
