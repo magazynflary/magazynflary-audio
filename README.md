@@ -9,7 +9,7 @@ Layout of a recording (`compose()` in `article_reading.py`, timing and levels in
 - intro: the jingle (`data/jingle/v2/fortepian.flac`, lossless master); over its decaying tail: "Magazyn Flary",
   the title, the author and "Czyta głos syntetyczny." ("Read by a synthetic voice."),
 - the article, sections separated by pauses,
-- outro: the jingle again, "Magazyn Flary" over its tail, ringing out to its end.
+- outro: 2 s after the article, "Magazyn Flary" alone, without the jingle.
 
 "Magazyn Flary" is a recording in another voice (`data/jingle/v2/magazyn-flary.flac`: the first 2 s of
 `data/jingle/v0/magazyn-flary.mp3`, as in the jingle's REAPER project), not the TTS voice. The disclosure sentence is
@@ -130,7 +130,7 @@ All code lives in `src/magazynflary_audio/`:
 
 - `types.py`: data types and protocols (`ArticleParser`, `TextToSpeechSystem`, `ArticleReader`),
 - `article_parsing.py`: markdown to `ParsedArticle`,
-- `article_reading.py`: `ParsedArticle` to `Audio` – chunking text for TTS, the intro and outro over the jingle,
+- `article_reading.py`: `ParsedArticle` to `Audio` – chunking text for TTS, the intro over the jingle, the outro,
   pauses,
 - `elevenlabs.py`: ElevenLabs TTS client (with retries and request stitching for consistent intonation),
 - `audio.py`: helpers for reading, concatenating, resampling, overlaying audio and loudness,

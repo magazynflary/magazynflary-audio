@@ -238,19 +238,18 @@ def _compose(jingle_seconds: float, mix: JingleMix) -> Audio:
 
 def test_compose_layout_with_a_long_tail() -> None:
     # Jingle 16 s, voice from 7.5 s: intro voice = 1 + 0.5 + 2 + 0.5 + 1.5 + 0.5 + 1 = 7 s, ends at 14.5 s;
-    # the jingle rings out to 16 s, then the article starts.
-    mix = JingleMix(voice_offset_seconds=7.5, brand_pause_seconds=0.5, pause_seconds=0.5)
+    # the jingle rings out to 16 s, then the article starts. Outro: 2 s, then the brand name (1 s) alone.
+    mix = JingleMix(voice_offset_seconds=7.5, brand_pause_seconds=0.5, outro_pause_seconds=2.0, pause_seconds=0.5)
     result = _compose(16.0, mix)
-    intro, article, outro = 16.0, 3.0 + 0.5 + 4.0, 16.0  # the outro rings out to the jingle's end
-    assert audio.duration_seconds(result) == pytest.approx(intro + 0.5 + article + 0.5 + outro, abs=1e-3)
+    intro, article, outro = 16.0, 3.0 + 0.5 + 4.0, 2.0 + 1.0
+    assert audio.duration_seconds(result) == pytest.approx(intro + 0.5 + article + outro, abs=1e-3)
 
 
 def test_compose_layout_with_a_short_jingle() -> None:
-    # Jingle 10 s, voice from 7.5 s to 14.5 s: the intro ends with the voice;
-    # the outro (brand name 7.5-8.5 s) rings out to the jingle's end, 10 s.
-    mix = JingleMix(voice_offset_seconds=7.5, brand_pause_seconds=0.5, pause_seconds=0.5)
+    # Jingle 10 s, voice from 7.5 s to 14.5 s: the intro ends with the voice.
+    mix = JingleMix(voice_offset_seconds=7.5, brand_pause_seconds=0.5, outro_pause_seconds=2.0, pause_seconds=0.5)
     result = _compose(10.0, mix)
-    assert audio.duration_seconds(result) == pytest.approx(14.5 + 0.5 + 7.5 + 0.5 + 10.0, abs=1e-3)
+    assert audio.duration_seconds(result) == pytest.approx(14.5 + 0.5 + 7.5 + 2.0 + 1.0, abs=1e-3)
 
 
 def test_compose_meets_loudness_and_true_peak() -> None:

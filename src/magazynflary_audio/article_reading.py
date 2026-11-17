@@ -46,15 +46,15 @@ the audio itself."""
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class JingleMix:
-    """How the voice is laid over the jingle (intro: brand name, title, author, disclosure; outro: brand name)
+    """The intro over the jingle (brand name, title, author, disclosure) and the outro (the brand name alone)
 
     Times are seconds from the start of the jingle file; levels are relative to the jingle normalized like the voice.
     """
 
     path: Path = DATA_DIR / "jingle/v2/fortepian.flac"
     brand_path: Path = DATA_DIR / "jingle/v2/magazyn-flary.flac"
-    """"Magazyn Flary", a recorded voice (not the TTS voice), over the jingle's tail in the intro and in the outro;
-    how it was made: README"""
+    """"Magazyn Flary", a recorded voice (not the TTS voice): over the jingle's tail in the intro, and alone as the
+    outro; how it was made: README"""
     voice_offset_seconds: float = 8.24
     """Where the voice starts: in the decaying tail after the last note (6.5 s), where the jingle's REAPER mix has it"""
     level_db: float = -3.0
@@ -62,8 +62,10 @@ class JingleMix:
     same LUFS). The tail is quiet enough to stay under the voice as it is - no ducking, no fade."""
     brand_pause_seconds: float = 1.2
     """In the intro, between "Magazyn Flary" and the article's title"""
+    outro_pause_seconds: float = 2.0
+    """Between the end of the article and "Magazyn Flary" closing the recording"""
     pause_seconds: float = 0.5
-    """Between the voice parts, between the article's sections, and around the article"""
+    """Between the voice parts, between the article's sections, and after the intro"""
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -201,7 +203,7 @@ def compose(
     intro   jingle; over its tail: brand name, title, author, disclosure (pauses between); then the article starts
             when both the voice and the jingle have ended
     article sections with pauses between
-    outro   jingle; over its tail: brand name; it ends when both have ended
+    outro   brand name alone, mix.outro_pause_seconds after the article; no jingle
 
     Every part is normalized to target_loudness on its own - the voice parts with up to max_limiting_db of peak
     limiting, the jingle to target_loudness + mix.level_db with the gain alone - then the whole recording once more
@@ -242,9 +244,9 @@ def compose(
     )
     intro = audio.overlay(jingle, intro_voice, offset_seconds=mix.voice_offset_seconds)
     article = audio.concat(list(itertools.chain(*[[normalized(a), pause] for a in section_audios]))[:-1])
-    outro = audio.overlay(jingle, brand, offset_seconds=mix.voice_offset_seconds)
+    outro_pause = audio.silence(sample_rate, duration_seconds=mix.outro_pause_seconds)
 
-    full = audio.concat([intro, pause, article, pause, outro])
+    full = audio.concat([intro, pause, article, outro_pause, brand])
     return audio.normalize_loudness(
         full,
         target_loudness=target_loudness,
