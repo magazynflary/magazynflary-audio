@@ -53,7 +53,8 @@ class JingleMix:
 
     path: Path = DATA_DIR / "jingle/v2/fortepian.flac"
     brand_path: Path = DATA_DIR / "jingle/v2/magazyn-flary.flac"
-    """"Magazyn Flary", a recorded voice (not the TTS voice), over the jingle's tail in the intro and in the outro"""
+    """"Magazyn Flary", a recorded voice (not the TTS voice), over the jingle's tail in the intro and in the outro;
+    how it was made: README"""
     voice_offset_seconds: float = 8.24
     """Where the voice starts: in the decaying tail after the last note (6.5 s), where the jingle's REAPER mix has it"""
     level_db: float = -3.0
