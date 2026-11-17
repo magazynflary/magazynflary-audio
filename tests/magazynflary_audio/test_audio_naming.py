@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from magazynflary_audio.audio_naming import PUBLISHED_AUDIO_STEM_RE, audio_file_stem, slugify
+from magazynflary_audio.audio_naming import PUBLISHED_AUDIO_STEM_RE, AudioNamingError, audio_file_stem, slugify
 
 SLUGS = {
     "already-a-slug": ("samotni-wsrod-ludzi", "samotni-wsrod-ludzi"),
@@ -24,7 +24,7 @@ def test_slugify(text: str, expected: str) -> None:
 
 @pytest.mark.parametrize("text", ["", "---", "!?", "日本"])
 def test_slugify_nothing_left(text: str) -> None:
-    with pytest.raises(ValueError, match="no letters or digits"):
+    with pytest.raises(AudioNamingError, match="no letters or digits"):
         slugify(text)
 
 
@@ -33,7 +33,7 @@ def test_audio_file_stem() -> None:
 
 
 @pytest.mark.parametrize("article_stem", [text for text, _ in SLUGS.values()])
-def test_audio_file_stem_matches_the_server_rule(article_stem: str) -> None:
+def test_audio_file_stem_matches_the_published_name_format(article_stem: str) -> None:
     assert PUBLISHED_AUDIO_STEM_RE.fullmatch(audio_file_stem(datetime.date(2024, 1, 31), article_stem))
 
 
@@ -48,5 +48,5 @@ def test_audio_file_stem_matches_the_server_rule(article_stem: str) -> None:
         "2026-05-07--samotni",  # double dash
     ],
 )
-def test_server_rule_rejects(stem: str) -> None:
+def test_published_name_format_rejects(stem: str) -> None:
     assert not PUBLISHED_AUDIO_STEM_RE.fullmatch(stem)

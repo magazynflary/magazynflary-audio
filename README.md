@@ -59,10 +59,8 @@ without `--since-date` or `--to-date` there is no limit on that side). Drafts ar
 `--skip-drafts` is given. It clones `magazynflary/prod` and saves one file per article, named
 `YYYY-MM-DD-slug.<format>`: the publication date (front matter `date`) followed by the article file name with Polish
 letters transliterated and any run of characters other than `a-z0-9` turned into `-`, e.g. the article
-`samotni-wśród-ludzi.md` dated 2026-05-07 is saved to `out/2026-05-07-samotni-wsrod-ludzi.mp3`. This is the naming
-convention of the audio server (audio.magazynflary.pl), which skips `.mp3` files named any other way. A corrected
-recording of an already published file must get a new name, e.g. with a `-v2` suffix
-(`2026-05-07-samotni-wsrod-ludzi-v2.mp3`), never replace the published file:
+`samotni-wśród-ludzi.md` dated 2026-05-07 is saved to `out/2026-05-07-samotni-wsrod-ludzi.mp3`, the name format
+required for publishing on the audio server:
 
 ```sh
 uv run python -m magazynflary_audio read-prod-articles --since-date 2026-05-01 --to-date 2026-09-30 \
@@ -74,9 +72,9 @@ An article that cannot be read (invalid front matter, e.g. a missing `date` or a
 splits into a chunk too long for the TTS) is logged as an error and skipped. An article with invalid front matter counts
 as failed even if it might be outside the date range, since its date cannot be known.
 Any other error, e.g. ElevenLabs being unreachable, stops the run. An article whose output file already exists is not read again
-(and nothing is overwritten); it is logged as an error and counted as a separate kind of failure. Two articles that
-would be saved under the same name (same date, file names equal after transliteration) are an error: the second one is
-not read. At the end it logs how many articles were read fine and how
+(and nothing is overwritten); it is logged as an error and counted as a separate kind of failure. Articles that
+would be saved under the same name (same date, file names equal after transliteration) are all errors: none of them is
+read, since choosing one would be arbitrary. At the end it logs how many articles were read fine and how
 many failed, and exits with 1 if any failed.
 
 With `--dry-run` it only logs which articles would be read and the file names they would be saved under, without
