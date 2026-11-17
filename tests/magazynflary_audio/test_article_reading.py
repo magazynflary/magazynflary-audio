@@ -6,7 +6,6 @@ import pytest
 
 from magazynflary_audio import audio
 from magazynflary_audio.article_reading import (
-    BRAND_NAME,
     MAX_TRUE_PEAK,
     OUTPUT_SAMPLE_RATE,
     VOICE_DISCLOSURE,
@@ -192,7 +191,7 @@ class RecordingTextToSpeech(TextToSpeechSystem[None]):
         return [Audio(samples=tone, sample_rate=self.sample_rate) for _ in chunks], None
 
 
-def test_read_article_reads_brand_then_title_author_and_disclosure() -> None:
+def test_read_article_reads_title_author_and_disclosure_then_sections() -> None:
     tts = RecordingTextToSpeech()
     article = ParsedArticle(
         author_slug="zaneta-zulawska",
@@ -203,9 +202,8 @@ def test_read_article_reads_brand_then_title_author_and_disclosure() -> None:
     result = ArticleReaderImpl(tts=tts, tts_cache_enabled=False).read_article(
         article, language="pl", author_info=AuthorInfo(name="Żaneta Żuławska", is_female=True)
     )
-    # The brand name alone (the same audio in every episode), then the intro, then the sections.
+    # The intro, then the sections; "Magazyn Flary" is a recording, not TTS.
     assert tts.calls == [
-        [BRAND_NAME],
         ["Artykuł pod tytułem: Tytuł", "Autorka: Żaneta Żuławska", VOICE_DISCLOSURE],
         ["Wstęp."],
         ["Sekcja.\n\nTreść."],
