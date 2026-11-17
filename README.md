@@ -15,6 +15,19 @@ Layout of a recording (`compose()` in `article_reading.py`, timing and levels in
 `data/jingle/v0/magazyn-flary.mp3`, as in the jingle's REAPER project), not the TTS voice. The disclosure sentence is
 there because Apple Podcasts requires a synthetic voice to be disclosed in the audio itself.
 
+The recorded "Magazyn Flary" was generated in the ElevenLabs web app, not by this tool:
+
+| Setting    | Value                                                             |
+|------------|-------------------------------------------------------------------|
+| Voice      | Ksawery - Cold, Guttural, and Steady (`bX8ZXtFbQtanSpI1KPZ1`)     |
+| Model      | Eleven v4                                                         |
+| Stability  | 28%                                                               |
+| Similarity | 75%                                                               |
+| Text       | `[głębokim głosem] Magazyn Flary` (the tag asks for a deep voice) |
+
+To change it, generate it there with these settings (or new ones, then update this table), cut the name out of the
+download and replace `data/jingle/v2/magazyn-flary.flac`.
+
 Output: 44.1 kHz stereo, each voice part and the whole recording normalized to -16 LUFS with true peaks at most
 -1 dBTP. The voice's rare peaks (plosives; ElevenLabs speech peaks 14-18 dB over its loudness) are brought down by a
 look-ahead limiter, by at most 3 dB (`SPEECH_MAX_LIMITING_DB`), and so are the few spots where the voice over the
