@@ -39,9 +39,6 @@ the sum can peak a little higher; without limiting those few spots would lower t
 OUTPUT_SAMPLE_RATE = 44100
 """The TTS voice (24 kHz) is resampled up; the jingle keeps its full band"""
 
-BRAND_NAME = "Magazyn Flary"
-"""Read over the jingle's tail in the intro and in the outro"""
-
 VOICE_DISCLOSURE = "Czyta głos syntetyczny."
 """Read after the author in every recording: Apple Podcasts (guideline 1.11) requires disclosing a synthetic voice in
 the audio itself, not only in the feed. Keep it the same as the disclosure in the podcast feed's descriptions."""
@@ -55,6 +52,8 @@ class JingleMix:
     """
 
     path: Path = DATA_DIR / "jingle/v2/fortepian.flac"
+    brand_path: Path = DATA_DIR / "jingle/v2/magazyn-flary.flac"
+    """"Magazyn Flary", a recorded voice (not the TTS voice), over the jingle's tail in the intro and in the outro"""
     voice_offset_seconds: float = 7.5
     """Where the voice starts: after the last note (6.5 s), in the decaying tail"""
     level_db: float = -3.0
@@ -72,8 +71,6 @@ class ArticleReaderImpl[SpeechContext](ArticleReader):
     jingle_mix: JingleMix = JingleMix()
 
     def read_article(self, article: ParsedArticle, *, language: Language, author_info: AuthorInfo) -> Audio:
-        # The brand name on its own, without speech context: the same audio in every episode, synthesized once.
-        (brand_audio,), _ = self._text_to_speech(chunks=[BRAND_NAME], language=language)
         gendered_author = "Autorka" if author_info.is_female else "Autor"
         (title_audio, author_audio, disclosure_audio), speech_context = self._text_to_speech(
             chunks=[
@@ -110,7 +107,7 @@ class ArticleReaderImpl[SpeechContext](ArticleReader):
             max_silently_clipped_fraction=0.001,
             mix=self.jingle_mix,
             jingle_audio=audio.read_audio(self.jingle_mix.path),
-            brand_audio=brand_audio,
+            brand_audio=audio.read_audio(self.jingle_mix.brand_path),
             title_audio=title_audio,
             author_audio=author_audio,
             disclosure_audio=disclosure_audio,
