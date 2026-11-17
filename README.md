@@ -12,8 +12,8 @@ Layout of a recording (`compose()` in `article_reading.py`, timing and levels in
 - outro: the jingle again, "Magazyn Flary" over its tail, ringing out to its end.
 
 "Magazyn Flary" is a recording in another voice (`data/jingle/v2/magazyn-flary.flac`: the first 2 s of
-`data/jingle/v0/magazyn-flary.mp3`, as in the jingle's REAPER project), not the TTS voice. The disclosure sentence is required by Apple Podcasts in the audio itself; the podcast feed
-(`roles/audio_hosting` in the infrastructure repo) uses the same sentence in its descriptions - change both together.
+`data/jingle/v0/magazyn-flary.mp3`, as in the jingle's REAPER project), not the TTS voice. The disclosure sentence is
+there because Apple Podcasts requires a synthetic voice to be disclosed in the audio itself.
 
 Output: 44.1 kHz stereo, each voice part and the whole recording normalized to -16 LUFS with true peaks at most
 -1 dBTP. The voice's rare peaks (plosives; ElevenLabs speech peaks 14-18 dB over its loudness) are brought down by a
