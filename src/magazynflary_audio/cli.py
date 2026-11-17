@@ -1,4 +1,5 @@
 import argparse
+import collections
 import datetime
 import logging
 import subprocess
@@ -10,12 +11,12 @@ import soundfile
 from magazynflary_audio.article_parsing import ArticleParserImpl
 from magazynflary_audio.article_reading import ArticleReaderImpl
 from magazynflary_audio.audio import get_channel_count
-from magazynflary_audio.audio_naming import audio_file_stem
+from magazynflary_audio.audio_naming import AudioNamingError, audio_file_stem
 from magazynflary_audio.authors import UnknownAuthorError, get_author_info
 from magazynflary_audio.data import DATA_DIR
 from magazynflary_audio.elevenlabs import ElevenLabs
 from magazynflary_audio.logging import setup_logging
-from magazynflary_audio.prod_repo import clone_prod_repo, find_articles
+from magazynflary_audio.prod_repo import FoundArticle, clone_prod_repo, find_articles
 from magazynflary_audio.types import Audio, AuthorInfo, ChunkTooLongError, ParsedArticle, ParserError
 
 LOG = logging.getLogger(__name__)
@@ -120,10 +121,8 @@ def _read_prod_articles(
         LOG.info(
             "Found %d articles from %s to %s", len(found.articles), since_date or "the beginning", to_date or "now"
         )
-        articles = [
-            (article.path.stem, article.publication_date, article.path.read_text(encoding="utf-8"))
-            for article in found.articles
-        ]
+        # Read now: the clone is removed when this block ends.
+        markdowns = {article.path: article.path.read_text(encoding="utf-8") for article in found.articles}
 
     article_parser = ArticleParserImpl()
     reader = None if dry_run else ArticleReaderImpl(tts=ElevenLabs.from_env(), tts_cache_enabled=tts_cache)
@@ -135,24 +134,25 @@ def _read_prod_articles(
     for path, error in found.invalid.items():
         LOG.error("Failed to read front matter of article %s: %s", path.stem, error)
         failed += 1
-    output_paths: dict[Path, str] = {}
-    for stem, publication_date, markdown in articles:
-        try:
-            output_path = output_dir / f"{audio_file_stem(publication_date, stem)}.{output_format}"
-        except ValueError as e:
-            LOG.error("Failed to name the output file of article %s: %s", stem, e)
-            failed += 1
-            continue
-        if output_path in output_paths:
+    articles_by_output_path, naming_errors = _group_by_output_path(
+        found.articles, output_dir=output_dir, output_format=output_format
+    )
+    for found_article, naming_error in naming_errors:
+        LOG.error("Failed to name the output file of article %s: %s", found_article.path.stem, naming_error)
+        failed += 1
+    for output_path, articles in articles_by_output_path.items():
+        if len(articles) > 1:
+            # Choosing one would be arbitrary: none is read until the names differ.
             LOG.error(
-                "Article %s would be saved to %s, the same file as article %s, not reading it",
-                stem,
+                "Articles %s would all be saved to %s, not reading any of them",
+                ", ".join(a.path.stem for a in articles),
                 output_path,
-                output_paths[output_path],
             )
-            failed += 1
+            failed += len(articles)
             continue
-        output_paths[output_path] = stem
+        (found_article,) = articles
+        stem = found_article.path.stem
+        markdown = markdowns[found_article.path]
         if output_path.exists():
             LOG.error("Output file %s already exists, not reading article %s", output_path, stem)
             output_exists += 1
@@ -194,6 +194,22 @@ def _read_prod_articles(
     )
     if failed or output_exists:
         sys.exit(1)
+
+
+def _group_by_output_path(
+    articles: list[FoundArticle], *, output_dir: Path, output_format: str
+) -> tuple[dict[Path, list[FoundArticle]], list[tuple[FoundArticle, AudioNamingError]]]:
+    """(the articles saved to each output path - more than one is a conflict, the articles that cannot be named)"""
+    articles_by_output_path: dict[Path, list[FoundArticle]] = collections.defaultdict(list)
+    naming_errors: list[tuple[FoundArticle, AudioNamingError]] = []
+    for article in articles:
+        try:
+            stem = audio_file_stem(article.publication_date, article.path.stem)
+        except AudioNamingError as e:
+            naming_errors.append((article, e))
+            continue
+        articles_by_output_path[output_dir / f"{stem}.{output_format}"].append(article)
+    return articles_by_output_path, naming_errors
 
 
 def _save(audio: Audio, path: Path) -> None:
