@@ -32,6 +32,10 @@ SPEECH_MAX_LIMITING_DB: float = 3.0
 peaks 14-18 dB over its loudness, so with the gain alone a whole article lands at -17 to -19 LUFS, decided by its single
 highest peak. The jingle is never limited."""
 
+MIX_MAX_LIMITING_DB: float = 1.5
+"""For the final pass over the whole recording: where the voice (already at the true peak limit) lies over the jingle,
+the sum can peak a little higher; without limiting those few spots would lower the whole recording."""
+
 OUTPUT_SAMPLE_RATE = 44100
 """The TTS voice (24 kHz) is resampled up; the jingle keeps its full band"""
 
@@ -201,7 +205,8 @@ def compose(
 
     Every part is normalized to target_loudness on its own - the voice parts with up to max_limiting_db of peak
     limiting, the jingle to target_loudness + mix.level_db with the gain alone - then the whole recording once more
-    (one constant gain, so the balance stays) to meet target_loudness and max_true_peak after mixing.
+    (one constant gain, so the balance stays; peaks where the voice lies over the jingle limited by at most
+    MIX_MAX_LIMITING_DB) to meet target_loudness and max_true_peak after mixing.
     """
 
     def normalized(a: Audio) -> Audio:
@@ -237,6 +242,7 @@ def compose(
         target_loudness=target_loudness,
         max_true_peak=max_true_peak,
         max_silently_clipped_fraction=max_silently_clipped_fraction,
+        max_limiting_db=min(max_limiting_db, MIX_MAX_LIMITING_DB),
     )
 
 

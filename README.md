@@ -17,8 +17,10 @@ episode. The disclosure sentence is required by Apple Podcasts in the audio itse
 
 Output: 44.1 kHz stereo, each voice part and the whole recording normalized to -16 LUFS with true peaks at most
 -1 dBTP. The voice's rare peaks (plosives; ElevenLabs speech peaks 14-18 dB over its loudness) are brought down by a
-look-ahead limiter, by at most 3 dB (`SPEECH_MAX_LIMITING_DB`); the jingle is never limited; `.mp3` at a constant 128 kbit/s (Apple Podcasts and Spotify recommend at least 128; constant, because apps
-derive duration and seek positions from the file size).
+look-ahead limiter, by at most 3 dB (`SPEECH_MAX_LIMITING_DB`), and so are the few spots where the voice over the
+jingle peaks higher, by at most 1.5 dB (`MIX_MAX_LIMITING_DB`); the jingle alone is never limited. `.mp3` at a
+constant 128 kbit/s (Apple Podcasts and Spotify recommend at least 128; constant, because apps derive duration and
+seek positions from the file size).
 
 ## Usage
 
