@@ -59,6 +59,8 @@ class JingleMix:
     level_db: float = -3.0
     """The jingle's loudness relative to the voice (a matter of balance: piano attacks sound louder than speech of the
     same LUFS). The tail is quiet enough to stay under the voice as it is - no ducking, no fade."""
+    brand_pause_seconds: float = 1.2
+    """In the intro, between "Magazyn Flary" and the article's title"""
     pause_seconds: float = 0.5
     """Between the voice parts, between the article's sections, and around the article"""
 
@@ -227,7 +229,15 @@ def compose(
     brand = normalized(brand_audio)
 
     intro_voice = audio.concat(
-        [brand, pause, normalized(title_audio), pause, normalized(author_audio), pause, normalized(disclosure_audio)]
+        [
+            brand,
+            audio.silence(sample_rate, duration_seconds=mix.brand_pause_seconds),
+            normalized(title_audio),
+            pause,
+            normalized(author_audio),
+            pause,
+            normalized(disclosure_audio),
+        ]
     )
     intro = audio.overlay(jingle, intro_voice, offset_seconds=mix.voice_offset_seconds)
     article = audio.concat(list(itertools.chain(*[[normalized(a), pause] for a in section_audios]))[:-1])
