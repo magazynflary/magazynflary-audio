@@ -213,6 +213,40 @@ def test_read_article_reads_title_author_and_disclosure_then_sections() -> None:
     assert result.samples.ndim == 2 and result.samples.shape[1] == 2
 
 
+def test_read_article_replaces_square_brackets_sent_to_tts(caplog: pytest.LogCaptureFixture) -> None:
+    # TTS would take [...] for an audio tag (e.g. beep it out): an omission mark [...] is dropped along with the space
+    # before it, other brackets are read as parentheses.
+    tts = RecordingTextToSpeech()
+    article = ParsedArticle(
+        author_slug="zaneta-zulawska",
+        title="Tytuł [cytat]",
+        intro_paragraphs=["Wstęp [...] dalej.", "Koniec [...].", "[...]początek."],
+        sections=[ParsedArticleSection(header="Sekcja [1]", paragraphs=["Treść [2] (3)."])],
+    )
+    ArticleReaderImpl(tts=tts, tts_cache_enabled=False).read_article(
+        article, language="pl", author_info=AuthorInfo(name="Żaneta [Ż.] Żuławska", is_female=True)
+    )
+    assert tts.calls == [
+        ["Artykuł pod tytułem: Tytuł (cytat)", "Autorka: Żaneta (Ż.) Żuławska", VOICE_DISCLOSURE],
+        ["Wstęp dalej.\n\nKoniec.\n\npoczątek."],
+        ["Sekcja (1).\n\nTreść (2) (3)."],
+    ]
+    assert "Text content had to be cleaned" in caplog.text
+
+
+def test_read_article_does_not_warn_when_nothing_is_cleaned(caplog: pytest.LogCaptureFixture) -> None:
+    article = ParsedArticle(
+        author_slug="zaneta-zulawska",
+        title="Tytuł (cytat)",
+        intro_paragraphs=["Wstęp."],
+        sections=[],
+    )
+    ArticleReaderImpl(tts=RecordingTextToSpeech(), tts_cache_enabled=False).read_article(
+        article, language="pl", author_info=AuthorInfo(name="Żaneta Żuławska", is_female=True)
+    )
+    assert "Text content had to be cleaned" not in caplog.text
+
+
 def _tone(seconds: float, *, sample_rate: int = 24000, frequency: float = 220.0, channels: int = 1) -> Audio:
     t = np.arange(round(seconds * sample_rate), dtype=np.float32) / sample_rate
     tone = (0.1 * np.sin(2 * np.pi * frequency * t)).astype(np.float32)

@@ -126,16 +126,31 @@ class ArticleReaderImpl[SpeechContext](ArticleReader):
         language: Language,
         speech_context: SpeechContext | None = None,
     ) -> tuple[list[Audio], SpeechContext]:
+        cleaned_chunks = [self._clean_text(chunk) for chunk in chunks]
         if self.tts_cache_enabled:
             return _cached_text_to_speech(
                 tts=self.tts,
                 tts_cache_key=self.tts.cache_key(),
-                chunks=chunks,
+                chunks=cleaned_chunks,
                 language=language,
                 speech_context=speech_context,
             )
         else:
-            return self.tts.text_to_speech(chunks, language=language, speech_context=speech_context)
+            return self.tts.text_to_speech(cleaned_chunks, language=language, speech_context=speech_context)
+
+    @staticmethod
+    def _clean_text(text: str) -> str:
+        transformed_text = text
+
+        # Square brackets are used for audio tags and may be misinterpreted by TTS, eg. [...] was beeped out
+        transformed_text = transformed_text.replace(" [...]", "")
+        transformed_text = transformed_text.replace("[...]", "")
+        transformed_text = transformed_text.replace("[", "(")
+        transformed_text = transformed_text.replace("]", ")")
+
+        if transformed_text != text:
+            LOG.warning("Text content had to be cleaned")
+        return transformed_text
 
 
 @cache(ignore=["tts"])
