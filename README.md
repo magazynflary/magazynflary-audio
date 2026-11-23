@@ -63,6 +63,7 @@ uv run python -m magazynflary_audio read-single-article --article path/to/articl
 | `--output PATH`       | Save the audio to a `.wav` or `.mp3` file.                                                       |
 | `--paplay`            | Play the audio through PulseAudio/PipeWire with `paplay`.                                        |
 | `--tts-cache`         | Cache TTS results in `data/cache/` so re-running on the same text does not call ElevenLabs again. |
+| `--tts-dummy`         | Read every TTS chunk as 1 s of silence at 24 kHz instead of calling ElevenLabs (no API key needed). |
 
 ElevenLabs usage is paid per character, so use `--tts-cache` while iterating. The cache is keyed by the TTS
 configuration (model, voice, stitching, …) as well as the text, so changing the configuration does not return stale
@@ -102,6 +103,8 @@ An article that cannot be read (invalid front matter, e.g. a missing `date` or a
 `true`/`false`, one the parser does not support, an author missing from `data/authors.yaml`, or one the article reader
 splits into a chunk too long for the TTS) is logged as an error and skipped. An article with invalid front matter counts
 as failed even if it might be outside the date range, since its date cannot be known.
+
+`read-prod-articles` also takes `--tts-dummy`, as `read-single-article` does.
 Any other error, e.g. ElevenLabs being unreachable, stops the run. An article whose output file already exists is not read again
 (and nothing is overwritten); it is logged as an error and counted as a separate kind of failure. Articles that
 would be saved under the same name (same date, file names equal after transliteration) are all errors: none of them is

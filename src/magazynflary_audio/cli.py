@@ -5,6 +5,7 @@ import logging
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import soundfile
 
@@ -14,10 +15,18 @@ from magazynflary_audio.audio import get_channel_count
 from magazynflary_audio.audio_naming import AudioNamingError, audio_file_stem
 from magazynflary_audio.authors import UnknownAuthorError, get_author_info
 from magazynflary_audio.data import DATA_DIR
+from magazynflary_audio.dummy_tts import DummyTTS
 from magazynflary_audio.elevenlabs import ElevenLabs
 from magazynflary_audio.logging import setup_logging
 from magazynflary_audio.prod_repo import FoundArticle, clone_prod_repo, find_articles
-from magazynflary_audio.types import Audio, AuthorInfo, ChunkTooLongError, ParsedArticle, ParserError
+from magazynflary_audio.types import (
+    Audio,
+    AuthorInfo,
+    ChunkTooLongError,
+    ParsedArticle,
+    ParserError,
+    TextToSpeechSystem,
+)
 
 LOG = logging.getLogger(__name__)
 
@@ -26,6 +35,8 @@ OUTPUT_FORMATS = {".wav": "WAV", ".mp3": "MP3"}
 # MP3: constant 128 kbit/s (Apple Podcasts and Spotify recommend at least 128). Constant, not variable: podcast apps
 # and browser players derive the duration and seek positions from the file size. libsndfile takes a
 # compression_level instead of a bitrate; 0.66 gives 128 kbit/s at 44.1 kHz stereo (tests/test_cli.py checks it).
+TTS_DUMMY_HELP = "instead of a real TTS, read every chunk as 1 s of silence (no API key needed)"
+
 MP3_OPTIONS = {"bitrate_mode": "CONSTANT", "compression_level": 0.66}
 
 
@@ -36,6 +47,7 @@ def main() -> None:
     read_single_article = subparsers.add_parser("read-single-article", help="read an article out loud")
     read_single_article.add_argument("--article", type=Path, help="article markdown file")
     read_single_article.add_argument("--tts-cache", action="store_true", help="use TTS cache")
+    read_single_article.add_argument("--tts-dummy", action="store_true", help=TTS_DUMMY_HELP)
     read_single_article.add_argument("--paplay", action="store_true", help="play the audio out loud with paplay")
     read_single_article.add_argument("--output", type=Path, help="save the audio to a .wav or .mp3 file")
 
@@ -58,6 +70,7 @@ def main() -> None:
     )
     read_prod_articles.add_argument("--skip-drafts", action="store_true", help="skip articles marked as drafts")
     read_prod_articles.add_argument("--tts-cache", action="store_true", help="use TTS cache")
+    read_prod_articles.add_argument("--tts-dummy", action="store_true", help=TTS_DUMMY_HELP)
     read_prod_articles.add_argument(
         "--dry-run",
         action="store_true",
@@ -71,7 +84,11 @@ def main() -> None:
                 read_single_article.error(f"--output must end with one of: {', '.join(OUTPUT_FORMATS)}")
             setup_logging()
             _read_single_article(
-                article_path=args.article, tts_cache=args.tts_cache, paplay=args.paplay, output=args.output
+                article_path=args.article,
+                tts_cache=args.tts_cache,
+                tts_dummy=args.tts_dummy,
+                paplay=args.paplay,
+                output=args.output,
             )
         case "read-prod-articles":
             setup_logging()
@@ -82,11 +99,18 @@ def main() -> None:
                 output_format=args.output_format,
                 skip_drafts=args.skip_drafts,
                 tts_cache=args.tts_cache,
+                tts_dummy=args.tts_dummy,
                 dry_run=args.dry_run,
             )
 
 
-def _read_single_article(*, article_path: Path | None, tts_cache: bool, paplay: bool, output: Path | None) -> None:
+def _make_tts(*, dummy: bool) -> TextToSpeechSystem[Any]:
+    return DummyTTS() if dummy else ElevenLabs.from_env()
+
+
+def _read_single_article(
+    *, article_path: Path | None, tts_cache: bool, tts_dummy: bool, paplay: bool, output: Path | None
+) -> None:
     article_parser = ArticleParserImpl()
     article: ParsedArticle
     author_info: AuthorInfo
@@ -101,7 +125,7 @@ def _read_single_article(*, article_path: Path | None, tts_cache: bool, paplay: 
 
     LOG.info("Parsed article %r by %s", article.title, article.author_slug)
     audio = ArticleReaderImpl(
-        tts=ElevenLabs.from_env(),
+        tts=_make_tts(dummy=tts_dummy),
         tts_cache_enabled=tts_cache,
     ).read_article(article, language="pl", author_info=author_info)
     LOG.info("Read article: %.1f s of audio at %d Hz", len(audio.samples) / audio.sample_rate, audio.sample_rate)
@@ -119,6 +143,7 @@ def _read_prod_articles(
     output_format: str,
     skip_drafts: bool,
     tts_cache: bool,
+    tts_dummy: bool,
     dry_run: bool,
 ) -> None:
     with clone_prod_repo() as repo_dir:
@@ -130,7 +155,7 @@ def _read_prod_articles(
         markdowns = {article.path: article.path.read_text(encoding="utf-8") for article in found.articles}
 
     article_parser = ArticleParserImpl()
-    reader = None if dry_run else ArticleReaderImpl(tts=ElevenLabs.from_env(), tts_cache_enabled=tts_cache)
+    reader = None if dry_run else ArticleReaderImpl(tts=_make_tts(dummy=tts_dummy), tts_cache_enabled=tts_cache)
     if not dry_run:
         output_dir.mkdir(parents=True, exist_ok=True)
     read = 0
