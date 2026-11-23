@@ -191,6 +191,7 @@ def _read_prod_articles(
             LOG.info("Would read article %s to %s", stem, output_path)
             read += 1
             continue
+        LOG.info("Reading article %s to %s", stem, output_path)
         try:
             article = article_parser.parse_article_markdown(markdown)
             author_info = get_author_info(article.author_slug)
