@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 
-from magazynflary_audio.markdown_frontmatter import required_string, split_front_matter
+from magazynflary_audio.markdown_frontmatter import required_string, required_strings, split_front_matter
 from magazynflary_audio.types import (
     ArticleParser,
     CleanText,
@@ -56,7 +56,7 @@ class ArticleParserImpl(ArticleParser):
         tokens = self._markdown.parse(_remove_pullquote_markers(body_markdown))
         body = _parse_body(tokens)
         return ParsedArticle(
-            author_slug=required_string(front_matter, "author"),
+            author_slugs=required_strings(front_matter, "author"),
             title=_clean(required_string(front_matter, "title")),
             intro_paragraphs=body.intro_paragraphs,
             sections=body.sections,

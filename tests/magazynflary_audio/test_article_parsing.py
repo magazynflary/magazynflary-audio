@@ -1,3 +1,4 @@
+import dataclasses
 from typing import NamedTuple
 
 import pytest
@@ -62,7 +63,7 @@ Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia
 Praesent pretium molestie mauris [in interdum](https://lipsum.com/).
 """,
     expected=ParsedArticle(
-        author_slug="żelisław-wój",
+        author_slugs=["żelisław-wój"],
         title="Lorem Ipsum",
         intro_paragraphs=[
             (
@@ -146,7 +147,7 @@ Curabitur at urna dictum, dictum odio eget, tempus arcu.
 Aenean ac lorem ex. Donec mattis tortor quis posuere suscipit.
 """,
     expected=ParsedArticle(
-        author_slug="żelisław-wój",
+        author_slugs=["żelisław-wój"],
         title="Dolor Sit Amet",
         intro_paragraphs=[
             (
@@ -190,7 +191,7 @@ Cras a dolor justo. Ut interdum pulvinar nibh ac porta.
 Praesent pretium molestie mauris [in interdum](https://lipsum.com/).
 """,
     expected=ParsedArticle(
-        author_slug="ewa-uważna",
+        author_slugs=["ewa-uważna"],
         title="Consectetur Adipiscing",
         intro_paragraphs=[],
         sections=[
@@ -234,7 +235,7 @@ Tempus leo eu aenean sed diam urna tempor.
 (Lorem, 1987, s. 277)
 """,
     expected=ParsedArticle(
-        author_slug="żelisław-wój",
+        author_slugs=["żelisław-wój"],
         title="Quisque Faucibus",
         intro_paragraphs=[
             "Lorem ipsum dolor sit amet consectetur adipiscing elit.",
@@ -281,7 +282,7 @@ a bibendum metus suspendisse mattis dui
 ac metus consectetur iaculis.
 """,
     expected=ParsedArticle(
-        author_slug="żelisław-wój",
+        author_slugs=["żelisław-wój"],
         title="Pellentesque Sem",
         intro_paragraphs=[
             "Lorem ipsum dolor sit amet consectetur adipiscing elit.",
@@ -311,6 +312,16 @@ TEST_CASES = {
     "header-first": TEST_CASE_HEADER_FIRST,
     "blockquote": TEST_CASE_BLOCKQUOTE,
     "pullquote-mid-sentence": TEST_CASE_PULLQUOTE_MID_SENTENCE,
+    "multiple-authors": ParsingTestCase(
+        markdown=TEST_CASE_LEAD.markdown.replace(
+            "author: żelisław-wój\n", "author:\n  - żelisław-wój\n  - ' ewa-uważna '\n", 1
+        ),
+        expected=dataclasses.replace(TEST_CASE_LEAD.expected, author_slugs=["żelisław-wój", "ewa-uważna"]),
+    ),
+    "single-author-in-list": ParsingTestCase(
+        markdown=TEST_CASE_LEAD.markdown.replace("author: żelisław-wój\n", "author: [żelisław-wój]\n", 1),
+        expected=TEST_CASE_LEAD.expected,
+    ),
 }
 
 ARTICLE_PARSER_IMPLEMENTATIONS: list[type[ArticleParser]] = [ArticleParserImpl]
@@ -336,6 +347,17 @@ def test_parse_article(parser: ArticleParser, test_case: ParsingTestCase) -> Non
         pytest.param(TEST_CASE_LEAD.markdown.replace("\n---\n\n", "\n\n", 1), id="unclosed-front-matter"),
         pytest.param(TEST_CASE_LEAD.markdown.replace('title: "Lorem Ipsum"\n', ""), id="no-title"),
         pytest.param(TEST_CASE_LEAD.markdown.replace("author: żelisław-wój\n", ""), id="no-author"),
+        pytest.param(TEST_CASE_LEAD.markdown.replace("author: żelisław-wój\n", "author: ' '\n"), id="blank-author"),
+        pytest.param(TEST_CASE_LEAD.markdown.replace("author: żelisław-wój\n", "author: []\n"), id="empty-authors"),
+        pytest.param(
+            TEST_CASE_LEAD.markdown.replace("author: żelisław-wój\n", "author: [żelisław-wój, 123]\n"),
+            id="non-string-author",
+        ),
+        pytest.param(
+            TEST_CASE_LEAD.markdown.replace("author: żelisław-wój\n", "author: [żelisław-wój, '']\n"),
+            id="blank-author-in-list",
+        ),
+        pytest.param(TEST_CASE_LEAD.markdown.replace("author: żelisław-wój\n", "author: 123\n"), id="author-number"),
         pytest.param(TEST_CASE_LEAD.markdown + "\n> ## Lorem\n", id="header-in-blockquote"),
         pytest.param(TEST_CASE_LEAD.markdown + "\n> > Lorem\n", id="nested-blockquote"),
         pytest.param(TEST_CASE_LEAD.markdown + "\n> - Lorem\n", id="list-in-blockquote"),

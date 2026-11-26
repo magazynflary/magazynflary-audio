@@ -17,8 +17,8 @@ class ParsedArticleSection:
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class ParsedArticle:
-    author_slug: str
-    """Slug of the author, like adam-something"""
+    author_slugs: list[str]
+    """Slugs of the authors, like adam-something"""
 
     title: CleanText
 
@@ -90,5 +90,5 @@ class AuthorInfo:
 
 
 class ArticleReader(typing.Protocol):
-    def read_article(self, article: ParsedArticle, *, language: Language, author_info: AuthorInfo) -> Audio:
+    def read_article(self, article: ParsedArticle, *, language: Language, author_infos: list[AuthorInfo]) -> Audio:
         """Reads the article"""
