@@ -29,3 +29,15 @@ def required_string(front_matter: FrontMatter, key: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ParserError(f"Front matter field {key!r} is missing or not a non-empty string")
     return value.strip()
+
+
+def required_strings(front_matter: FrontMatter, key: str) -> list[str]:
+    """A non-empty string or a non-empty list of non-empty strings"""
+    value = front_matter.get(key)
+    if isinstance(value, str):
+        return [required_string(front_matter, key)]
+    if not isinstance(value, list) or not value or not all(isinstance(item, str) and item.strip() for item in value):
+        raise ParserError(
+            f"Front matter field {key!r} is missing or not a non-empty string or a non-empty list of non-empty strings"
+        )
+    return [item.strip() for item in value]

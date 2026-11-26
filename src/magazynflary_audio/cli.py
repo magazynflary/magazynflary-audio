@@ -113,21 +113,21 @@ def _read_single_article(
 ) -> None:
     article_parser = ArticleParserImpl()
     article: ParsedArticle
-    author_info: AuthorInfo
+    author_infos: list[AuthorInfo]
     if article_path is None:
         article = article_parser.parse_article_markdown(
             (DATA_DIR / "article" / "example-1-lorem-ipsum.md").read_text(encoding="utf-8")
         )
-        author_info = AuthorInfo(name="Adam Sensowny", is_female=False)
+        author_infos = [AuthorInfo(name="Adam Sensowny", is_female=False)]
     else:
         article = article_parser.parse_article_markdown(article_path.read_text(encoding="utf-8"))
-        author_info = get_author_info(article.author_slug)
+        author_infos = [get_author_info(author_slug) for author_slug in article.author_slugs]
 
-    LOG.info("Parsed article %r by %s", article.title, article.author_slug)
+    LOG.info("Parsed article %r by %s", article.title, article.author_slugs)
     audio = ArticleReaderImpl(
         tts=_make_tts(dummy=tts_dummy),
         tts_cache_enabled=tts_cache,
-    ).read_article(article, language="pl", author_info=author_info)
+    ).read_article(article, language="pl", author_infos=author_infos)
     LOG.info("Read article: %.1f s of audio at %d Hz", len(audio.samples) / audio.sample_rate, audio.sample_rate)
     if output is not None:
         _save(audio, output)
@@ -194,8 +194,8 @@ def _read_prod_articles(
         LOG.info("Reading article %s to %s", stem, output_path)
         try:
             article = article_parser.parse_article_markdown(markdown)
-            author_info = get_author_info(article.author_slug)
-            audio = reader.read_article(article, language="pl", author_info=author_info)
+            author_infos = [get_author_info(author_slug) for author_slug in article.author_slugs]
+            audio = reader.read_article(article, language="pl", author_infos=author_infos)
             _save(audio, output_path)
         except ParserError as e:
             LOG.error("Failed to parse article %s: %s", stem, e)

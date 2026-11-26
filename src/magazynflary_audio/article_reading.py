@@ -75,12 +75,23 @@ class ArticleReaderImpl[SpeechContext](ArticleReader):
     target_loudness: float = DEFAULT_TARGET_LOUDNESS
     jingle_mix: JingleMix = JingleMix()
 
-    def read_article(self, article: ParsedArticle, *, language: Language, author_info: AuthorInfo) -> Audio:
-        gendered_author = "Autorka" if author_info.is_female else "Autor"
+    def read_article(self, article: ParsedArticle, *, language: Language, author_infos: list[AuthorInfo]) -> Audio:
+        assert len(author_infos) > 0, "No authors in the article"
+        gendered_authors = (
+            ("Autorka" if author_infos[0].is_female else "Autor")
+            if len(author_infos) == 1
+            else ("Autorki" if all(author_info.is_female for author_info in author_infos) else "Autorzy")
+        )
+        author_names_list = [author_info.name for author_info in author_infos]
+        authors_names_string = (
+            " i ".join([", ".join(author_names_list[:-1]), author_names_list[-1]])
+            if len(author_names_list) > 1
+            else author_names_list[0]
+        )
         (title_audio, author_audio, disclosure_audio), speech_context = self._text_to_speech(
             chunks=[
-                f"Artykuł pod tytułem: {article.title}",
-                f"{gendered_author}: {author_info.name}",
+                f"Artykuł pod tytułem: {article.title}.",
+                f"{gendered_authors}: {authors_names_string}.",
                 VOICE_DISCLOSURE,
             ],
             language=language,
